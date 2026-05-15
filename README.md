@@ -1,71 +1,166 @@
 # Ubuntu Wayland Sizer
 
-Ubuntu Wayland Sizer is an experimental GNOME Shell Extension project for Ubuntu GNOME on Wayland.
+Ubuntu Wayland Sizer is a lightweight GNOME Shell Extension for Ubuntu GNOME on Wayland.
 
-The long-term goal is to provide Sizer-like window resize and positioning presets on GNOME Wayland, while respecting the Wayland security model.
+The project provides Sizer-like focused-window resize and positioning presets while staying inside the GNOME Shell / Mutter window-management model.
 
-## Current Strategy
+## Current Status
 
-This repository intentionally starts from a minimal baseline.
+```text
+Baseline: v0.1-baseline
+Target: Ubuntu 26.04 / GNOME Shell 50 / Wayland
+Architecture: GNOME Shell extension only
+```
 
-Earlier prototype ideas are treated as design inspiration only. The first implementation phase focuses on a stable GNOME Shell Extension lifecycle before adding D-Bus, GTK4 UI, tray integration, floating menus, or border-trigger UX.
+The current baseline has validated:
 
-## MVP Scope
+- Focused-window resize/move on Wayland
+- Primary and secondary monitor handling
+- Secondary monitor portrait-right layout
+- 100%, 125%, 150%, and mixed-scaling smoke tests
+- Full-workarea / maximized-like breakout before resizing
+- Electron minimum-width constrained app correction
+- Workarea-based geometry instead of raw monitor geometry
 
-Phase 1 focuses on:
+## Default Shortcuts
 
-- A clean GNOME Shell Extension entry point
-- Stable enable / disable lifecycle
-- Minimal logging for startup verification
-- A documented debugging workflow
+```text
+Super + Alt + H      -> Left half
+Super + Alt + L      -> Right half
+Super + Alt + F      -> Full workarea
+Super + Alt + C      -> Center 1280x720
+```
 
-Phase 2 will add:
-
-- A global hotkey
-- Focused-window resize testing
-- A few hardcoded resize presets
-
-Later phases may add:
-
-- Preset JSON support
-- D-Bus control API
-- GTK4/libadwaita companion settings app
-- Macro-based expressions
-- Floating sizer menu
-- Border trigger UX
+Arrow-key defaults are intentionally avoided because Ubuntu/GNOME may intercept `Super + Alt + Arrow` combinations for built-in window-management behavior.
 
 ## Target Platform
 
 Initial target:
 
-- Ubuntu 26.04 LTS
+- Ubuntu 26.04
 - GNOME Shell 50
 - Wayland session
 
-The extension is expected to evolve with GNOME Shell API changes.
+Other GNOME Shell versions may require API adjustments.
+
+## Install for Development
+
+Clone the repository:
+
+```bash
+git clone git@github.com:sawaichi9527/ubuntu-wayland-sizer.git
+cd ubuntu-wayland-sizer
+```
+
+Install or update the user-local extension:
+
+```bash
+./scripts/install-extension-dev.sh
+```
+
+If schemas or shortcut defaults changed, log out and log back in.
+
+Enable the extension:
+
+```bash
+gnome-extensions enable ubuntu-wayland-sizer@sawaichi9527
+```
+
+Check status:
+
+```bash
+gnome-extensions info ubuntu-wayland-sizer@sawaichi9527
+```
+
+Watch logs:
+
+```bash
+journalctl --user -f -o cat /usr/bin/gnome-shell
+```
+
+## Update Existing Development Install
+
+```bash
+git pull
+./scripts/install-extension-dev.sh
+
+gnome-extensions disable ubuntu-wayland-sizer@sawaichi9527
+sleep 1
+gnome-extensions enable ubuntu-wayland-sizer@sawaichi9527
+```
+
+If GSettings schema keys changed, log out and back in before testing.
 
 ## Repository Layout
 
 ```text
 ubuntu-wayland-sizer/
 ├── README.md
+├── CHANGELOG.md
 ├── docs/
 │   ├── architecture.md
-│   ├── mvp-plan.md
-│   └── debug-extension-startup.md
-└── extension/
-    ├── metadata.json
-    └── extension.js
+│   ├── debug-extension-startup.md
+│   ├── keybinding-policy.md
+│   ├── known-issues.md
+│   ├── phase-3-built-in-presets.md
+│   ├── phase-4-multi-monitor-and-safety.md
+│   ├── reference-implementations.md
+│   ├── status.md
+│   └── test-matrix.md
+├── extension/
+│   ├── extension.js
+│   ├── metadata.json
+│   └── schemas/
+│       └── org.gnome.shell.extensions.ubuntu-wayland-sizer.gschema.xml
+└── scripts/
+    └── install-extension-dev.sh
 ```
 
-## Development Notes
+## Design Principles
 
-Do not add multiple managers at once during early development.
+- Keep the baseline extension-only.
+- Use GNOME Shell keybindings instead of low-level key capture.
+- Use monitor workarea, not raw monitor geometry.
+- Treat full-workarea frames as maximized-like even when `get_maximized()` is insufficient.
+- Apply a safe restore before resizing full-workarea/maximized-like windows.
+- Read back actual frame geometry after resize and correct edge alignment for constrained apps.
+- Defer D-Bus, GTK UI, tray integration, floating menus, and border triggers until geometry behavior is stable.
 
-The preferred workflow is:
+## Reference Implementation Notes
 
-1. Keep `extension.js` minimal.
-2. Verify enable / disable lifecycle.
-3. Add one module at a time.
-4. Check GNOME Shell logs after every change.
-5. Only add D-Bus and GTK UI after hotkey-based window resize is stable.
+See:
+
+```text
+docs/reference-implementations.md
+```
+
+The project uses Ubuntu/Tiling Assistant as a practical reference for GNOME Shell / Mutter tiling behavior, especially around maximized-like states, monitor movement, and Wayland move/resize ordering.
+
+## Current Development Direction
+
+Current phase:
+
+```text
+Phase 5 — Baseline hardening and release hygiene
+```
+
+Near-term work:
+
+- Keep README and docs aligned with tested behavior.
+- Maintain a practical test matrix.
+- Track known GNOME Shell / Ubuntu Dock / Mutter warnings separately from extension issues.
+- Add a debug-log setting before expanding feature scope.
+
+Future phase:
+
+```text
+Phase 6 — User-configurable presets
+```
+
+Potential Phase 6 items:
+
+- Configurable center size
+- Additional built-in presets
+- Cleaner debug-log toggle
+- User-facing shortcut documentation
+- Preset configuration model
