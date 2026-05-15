@@ -14,15 +14,15 @@
     </key>
 
     <key name="resize-full" type="as">
-      <default><![CDATA[['<Super><Alt>Up']]]></default>
+      <default><![CDATA[['<Super><Alt>F']]]></default>
       <summary>Resize focused window to the full current workarea</summary>
-      <description>Keyboard shortcut for the full-workarea preset.</description>
+      <description>Keyboard shortcut for the full-workarea preset. This intentionally avoids Super+Alt+Up because GNOME/Ubuntu may reserve upward-arrow combinations for window overview or window management.</description>
     </key>
 
     <key name="resize-center" type="as">
-      <default><![CDATA[['<Super><Alt>Down']]]></default>
+      <default><![CDATA[['<Super><Alt>C']]]></default>
       <summary>Resize focused window to a centered 1280x720 rectangle</summary>
-      <description>Keyboard shortcut for the centered fixed-size preset.</description>
+      <description>Keyboard shortcut for the centered fixed-size preset. This intentionally avoids Super+Alt+Down because GNOME/Ubuntu may reserve arrow combinations for window management.</description>
     </key>
   </schema>
 </schemalist>
