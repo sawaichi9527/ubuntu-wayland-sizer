@@ -2,25 +2,45 @@
 
 ## Current Milestone
 
-Phase 2 focused-window resize probe is functionally validated.
+Phase 3 built-in preset dispatcher is functionally validated on core desktop applications.
 
-## Validation Log
+Phase 4 geometry safety and multi-application observation is in progress.
 
-Environment:
+## Validation Environment
 
+- Ubuntu 26.04
 - GNOME Shell 50
 - Wayland session
 - User-local extension install path
 
-Confirmed behavior:
+## Confirmed Behavior
 
 - Extension can be disabled and enabled cleanly.
 - Extension-local GSettings schema is found after logout/login and reinstall.
-- Keybinding `resize-left` is registered successfully.
-- `Super + Alt + Left` triggers the resize action.
-- The currently focused normal window moves/resizes to the left half of the current workarea.
+- Built-in preset keybindings are registered successfully.
+- `Super + Alt + Arrow` shortcuts trigger preset actions.
+- The currently focused normal window moves/resizes according to the selected preset.
 
-Observed expected logs:
+## Confirmed Presets
+
+```text
+Super + Alt + Left   -> Left half
+Super + Alt + Right  -> Right half
+Super + Alt + Up     -> Full workarea
+Super + Alt + Down   -> Center 1280x720
+```
+
+## Confirmed Applications
+
+The following applications have been tested successfully:
+
+- Firefox
+- Terminal
+- Ubuntu 26.04 built-in text editor
+
+All tested applications responded correctly to the current built-in preset actions.
+
+## Observed Expected Logs
 
 ```text
 [ubuntu-wayland-sizer] disable: start
@@ -28,7 +48,10 @@ Observed expected logs:
 [ubuntu-wayland-sizer] disabled
 [ubuntu-wayland-sizer] enable: start
 [ubuntu-wayland-sizer] enable: settings loaded from metadata settings-schema
-[ubuntu-wayland-sizer] enable: keybinding registered: resize-left
+[ubuntu-wayland-sizer] enable: keybinding registered: resize-left -> left
+[ubuntu-wayland-sizer] enable: keybinding registered: resize-right -> right
+[ubuntu-wayland-sizer] enable: keybinding registered: resize-full -> full
+[ubuntu-wayland-sizer] enable: keybinding registered: resize-center -> center
 [ubuntu-wayland-sizer] enabled
 ```
 
@@ -52,13 +75,16 @@ Notes:
 
 ## Next Recommended Step
 
-Proceed to Phase 3 with a very small built-in preset set:
+Continue Phase 4 with broader compatibility testing before adding D-Bus or GTK4 UI.
 
-- Left half
-- Right half
-- Full workarea
-- Center 1280x720
+Suggested next test coverage:
 
-Do not add D-Bus or GTK4 UI yet.
+- Multi-monitor layout
+- Different monitor scale factors
+- Maximized windows
+- Electron applications
+- LibreOffice
+- Minimum-size constrained dialogs
+- Apps with client-side decorations
 
-The next implementation should refactor the current one-off resize function into a small preset dispatcher while keeping the extension-only architecture.
+Do not add D-Bus or GTK4 UI until the extension-only geometry behavior is stable enough.
