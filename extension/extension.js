@@ -6,8 +6,9 @@ import { Extension } from 'resource:///org/gnome/shell/extensions/extension.js';
 import * as Main from 'resource:///org/gnome/shell/ui/main.js';
 
 const LOG_PREFIX = '[ubuntu-wayland-sizer]';
-const POST_UNMAXIMIZE_RESIZE_DELAY_MS = 120;
-const POST_RESIZE_CORRECTION_DELAY_MS = 80;
+const POST_UNMAXIMIZE_RESIZE_DELAY_MS = 180;
+const POST_RESIZE_CORRECTION_DELAY_MS = 90;
+const FULL_WORKAREA_TOLERANCE_PX = 2;
 
 const PRESETS = Object.freeze({
     LEFT: 'left',
@@ -102,39 +103,56 @@ export default class UbuntuWaylandSizerExtension extends Extension {
             return;
         }
 
-        if (this._isWindowMaximized(window)) {
-            try {
-                window.unmaximize();
-                console.log(
-                    `${LOG_PREFIX} action: unmaximized target window; ` +
-                    `deferring preset ${presetName} by ${POST_UNMAXIMIZE_RESIZE_DELAY_MS}ms`
-                );
+        const context = this._getWindowContext(window);
 
-                this._scheduleTimeout(POST_UNMAXIMIZE_RESIZE_DELAY_MS, () => {
-                    this._applyPresetToWindow(window, presetName, 'after-unmaximize');
-                });
-            } catch (error) {
-                console.error(`${LOG_PREFIX} action: unmaximize failed; applying preset immediately: ${this._formatError(error)}`);
-                this._applyPresetToWindow(window, presetName, 'unmaximize-failed');
-            }
+        if (presetName !== PRESETS.FULL && this._isEffectivelyFullWorkarea(window, context.workArea, context.frameRect)) {
+            this._breakOutFromFullWorkarea(window, presetName, context);
             return;
         }
 
         this._applyPresetToWindow(window, presetName, 'direct');
     }
 
+    _breakOutFromFullWorkarea(window, presetName, context) {
+        console.log(
+            `${LOG_PREFIX} action: full-workarea state detected; ` +
+            `breaking out before preset ${presetName}: ` +
+            `monitor=${context.monitorIndex}, ` +
+            `workarea=${context.workArea.x},${context.workArea.y} ${context.workArea.width}x${context.workArea.height}, ` +
+            `frame=${context.frameRect.x},${context.frameRect.y} ${context.frameRect.width}x${context.frameRect.height}`
+        );
+
+        try {
+            this._unmakeFullscreenBestEffort(window);
+            this._unmaximizeBestEffort(window);
+            this._moveToMonitorBestEffort(window, context.monitorIndex);
+
+            const safeRect = this._calculateSafeRestoreGeometry(context.workArea);
+            window.move_frame(true, safeRect.x, safeRect.y);
+            window.move_resize_frame(true, safeRect.x, safeRect.y, safeRect.width, safeRect.height);
+
+            console.log(
+                `${LOG_PREFIX} action: applied safe restore before preset ${presetName}: ` +
+                `${safeRect.x},${safeRect.y} ${safeRect.width}x${safeRect.height}`
+            );
+        } catch (error) {
+            console.error(`${LOG_PREFIX} action: safe restore failed before preset ${presetName}: ${this._formatError(error)}`);
+        }
+
+        this._scheduleTimeout(POST_UNMAXIMIZE_RESIZE_DELAY_MS, () => {
+            this._applyPresetToWindow(window, presetName, 'after-full-workarea-breakout');
+        });
+    }
+
     _applyPresetToWindow(window, presetName, reason) {
-        const monitorIndex = window.get_monitor();
-        const workspace = global.workspace_manager.get_active_workspace();
-        const workArea = workspace.get_work_area_for_monitor(monitorIndex);
-        const frameRect = window.get_frame_rect();
-        const target = this._calculatePresetGeometry(presetName, workArea, frameRect);
+        const context = this._getWindowContext(window);
+        const target = this._calculatePresetGeometry(presetName, context.workArea, context.frameRect);
 
         console.log(
             `${LOG_PREFIX} action: geometry context (${reason}): ` +
-            `monitor=${monitorIndex}, ` +
-            `workarea=${workArea.x},${workArea.y} ${workArea.width}x${workArea.height}, ` +
-            `frame=${frameRect.x},${frameRect.y} ${frameRect.width}x${frameRect.height}`
+            `monitor=${context.monitorIndex}, ` +
+            `workarea=${context.workArea.x},${context.workArea.y} ${context.workArea.width}x${context.workArea.height}, ` +
+            `frame=${context.frameRect.x},${context.frameRect.y} ${context.frameRect.width}x${context.frameRect.height}`
         );
 
         if (!target) {
@@ -151,20 +169,16 @@ export default class UbuntuWaylandSizerExtension extends Extension {
         }
 
         try {
-            window.move_resize_frame(
-                true,
-                target.x,
-                target.y,
-                target.width,
-                target.height
-            );
+            this._moveToMonitorBestEffort(window, context.monitorIndex);
+            window.move_frame(true, target.x, target.y);
+            window.move_resize_frame(true, target.x, target.y, target.width, target.height);
 
             console.log(
                 `${LOG_PREFIX} action: applied preset ${presetName}: ` +
                 `${target.x},${target.y} ${target.width}x${target.height}`
             );
 
-            this._schedulePostResizeCorrection(window, presetName, workArea, target);
+            this._schedulePostResizeCorrection(window, presetName, context.workArea, target);
         } catch (error) {
             console.error(
                 `${LOG_PREFIX} action: move_resize_frame failed for ${presetName}: ` +
@@ -173,12 +187,21 @@ export default class UbuntuWaylandSizerExtension extends Extension {
         }
     }
 
+    _getWindowContext(window) {
+        const monitorIndex = window.get_monitor();
+        const workspace = global.workspace_manager.get_active_workspace();
+        const workArea = workspace.get_work_area_for_monitor(monitorIndex);
+        const frameRect = window.get_frame_rect();
+
+        return { monitorIndex, workspace, workArea, frameRect };
+    }
+
     _schedulePostResizeCorrection(window, presetName, workArea, target) {
         if (![PRESETS.LEFT, PRESETS.RIGHT, PRESETS.CENTER].includes(presetName))
             return;
 
         this._scheduleTimeout(POST_RESIZE_CORRECTION_DELAY_MS, () => {
-            this._postResizeCorrection(window, presetName, workArea, target);
+            this._postResizeCorrection(window, presetName, workArea, target, 1);
         });
     }
 
@@ -197,14 +220,28 @@ export default class UbuntuWaylandSizerExtension extends Extension {
         return sourceId;
     }
 
-    _postResizeCorrection(window, presetName, workArea, requestedTarget) {
+    _postResizeCorrection(window, presetName, workArea, requestedTarget, attempt) {
         try {
-            if (this._isWindowMaximized(window)) {
-                console.log(`${LOG_PREFIX} action: post-correction skipped for maximized window: ${presetName}`);
+            const actualFrame = window.get_frame_rect();
+
+            if (this._isFrameNearlyEqualToWorkArea(actualFrame, workArea) && !this._isFrameNearlySameGeometry(actualFrame, requestedTarget)) {
+                console.log(
+                    `${LOG_PREFIX} action: resize rejected for ${presetName}; retrying requested target ` +
+                    `(attempt=${attempt}): actual=${actualFrame.x},${actualFrame.y} ${actualFrame.width}x${actualFrame.height}, ` +
+                    `requested=${requestedTarget.x},${requestedTarget.y} ${requestedTarget.width}x${requestedTarget.height}`
+                );
+
+                if (attempt <= 2) {
+                    window.move_frame(true, requestedTarget.x, requestedTarget.y);
+                    window.move_resize_frame(true, requestedTarget.x, requestedTarget.y, requestedTarget.width, requestedTarget.height);
+
+                    this._scheduleTimeout(POST_RESIZE_CORRECTION_DELAY_MS, () => {
+                        this._postResizeCorrection(window, presetName, workArea, requestedTarget, attempt + 1);
+                    });
+                }
                 return;
             }
 
-            const actualFrame = window.get_frame_rect();
             const correctedTarget = this._calculateCorrectionGeometry(
                 presetName,
                 workArea,
@@ -223,6 +260,7 @@ export default class UbuntuWaylandSizerExtension extends Extension {
                 return;
             }
 
+            window.move_frame(true, correctedTarget.x, correctedTarget.y);
             window.move_resize_frame(
                 true,
                 correctedTarget.x,
@@ -279,13 +317,81 @@ export default class UbuntuWaylandSizerExtension extends Extension {
             Math.abs(frameRect.height - target.height) <= 1;
     }
 
+    _isFrameNearlySameGeometry(frameRect, geometry) {
+        return Math.abs(frameRect.x - geometry.x) <= FULL_WORKAREA_TOLERANCE_PX &&
+            Math.abs(frameRect.y - geometry.y) <= FULL_WORKAREA_TOLERANCE_PX &&
+            Math.abs(frameRect.width - geometry.width) <= FULL_WORKAREA_TOLERANCE_PX &&
+            Math.abs(frameRect.height - geometry.height) <= FULL_WORKAREA_TOLERANCE_PX;
+    }
+
+    _isFrameNearlyEqualToWorkArea(frameRect, workArea) {
+        return Math.abs(frameRect.x - workArea.x) <= FULL_WORKAREA_TOLERANCE_PX &&
+            Math.abs(frameRect.y - workArea.y) <= FULL_WORKAREA_TOLERANCE_PX &&
+            Math.abs(frameRect.width - workArea.width) <= FULL_WORKAREA_TOLERANCE_PX &&
+            Math.abs(frameRect.height - workArea.height) <= FULL_WORKAREA_TOLERANCE_PX;
+    }
+
+    _isEffectivelyFullWorkarea(window, workArea, frameRect) {
+        return this._isWindowMaximized(window) || this._isFrameNearlyEqualToWorkArea(frameRect, workArea);
+    }
+
     _isWindowMaximized(window) {
         try {
-            return Boolean(window.get_maximized && window.get_maximized() !== 0);
+            if (window.get_maximized && window.get_maximized() !== 0)
+                return true;
+
+            return Boolean(window.maximizedHorizontally && window.maximizedVertically);
         } catch (error) {
             console.error(`${LOG_PREFIX} action: failed to check maximized state: ${this._formatError(error)}`);
             return false;
         }
+    }
+
+    _unmakeFullscreenBestEffort(window) {
+        try {
+            if (window.unmake_fullscreen)
+                window.unmake_fullscreen();
+        } catch (error) {
+            console.error(`${LOG_PREFIX} action: unmake_fullscreen skipped/failed: ${this._formatError(error)}`);
+        }
+    }
+
+    _unmaximizeBestEffort(window) {
+        try {
+            if (!window.unmaximize)
+                return;
+
+            if (window.unmaximize.length === 0) {
+                window.unmaximize();
+            } else if (window.get_maximized) {
+                window.unmaximize(window.get_maximized());
+            } else {
+                window.unmaximize(Meta.MaximizeFlags.BOTH);
+            }
+        } catch (error) {
+            console.error(`${LOG_PREFIX} action: unmaximize skipped/failed: ${this._formatError(error)}`);
+        }
+    }
+
+    _moveToMonitorBestEffort(window, monitorIndex) {
+        try {
+            if (window.move_to_monitor)
+                window.move_to_monitor(monitorIndex);
+        } catch (error) {
+            console.error(`${LOG_PREFIX} action: move_to_monitor skipped/failed: ${this._formatError(error)}`);
+        }
+    }
+
+    _calculateSafeRestoreGeometry(workArea) {
+        const width = Math.max(1, Math.floor(workArea.width * 0.72));
+        const height = Math.max(1, Math.floor(workArea.height * 0.72));
+
+        return this._clampGeometryToWorkArea({
+            x: workArea.x + Math.floor((workArea.width - width) / 2),
+            y: workArea.y + Math.floor((workArea.height - height) / 2),
+            width,
+            height,
+        }, workArea);
     }
 
     _calculatePresetGeometry(presetName, workArea, frameRect) {
