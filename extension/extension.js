@@ -1,3 +1,4 @@
+import GLib from 'gi://GLib';
 import Meta from 'gi://Meta';
 import Shell from 'gi://Shell';
 
@@ -5,6 +6,7 @@ import { Extension } from 'resource:///org/gnome/shell/extensions/extension.js';
 import * as Main from 'resource:///org/gnome/shell/ui/main.js';
 
 const LOG_PREFIX = '[ubuntu-wayland-sizer]';
+const POST_RESIZE_CORRECTION_DELAY_MS = 80;
 
 const PRESETS = Object.freeze({
     LEFT: 'left',
@@ -27,6 +29,7 @@ export default class UbuntuWaylandSizerExtension extends Extension {
         try {
             this._settings = this.getSettings();
             this._registeredKeybindings = [];
+            this._pendingCorrectionIds = [];
             console.log(`${LOG_PREFIX} enable: settings loaded from metadata settings-schema`);
 
             for (const [keybindingName, presetName] of KEYBINDINGS) {
@@ -57,6 +60,16 @@ export default class UbuntuWaylandSizerExtension extends Extension {
     }
 
     _cleanup() {
+        if (this._pendingCorrectionIds) {
+            for (const sourceId of this._pendingCorrectionIds) {
+                try {
+                    GLib.source_remove(sourceId);
+                } catch (error) {
+                    console.error(`${LOG_PREFIX} cleanup: failed to remove pending correction ${sourceId}: ${this._formatError(error)}`);
+                }
+            }
+        }
+
         if (this._registeredKeybindings) {
             for (const keybindingName of this._registeredKeybindings) {
                 try {
@@ -68,6 +81,7 @@ export default class UbuntuWaylandSizerExtension extends Extension {
             }
         }
 
+        this._pendingCorrectionIds = [];
         this._registeredKeybindings = [];
         this._settings = null;
     }
@@ -128,12 +142,108 @@ export default class UbuntuWaylandSizerExtension extends Extension {
                 `${LOG_PREFIX} action: applied preset ${presetName}: ` +
                 `${target.x},${target.y} ${target.width}x${target.height}`
             );
+
+            this._schedulePostResizeCorrection(window, presetName, workArea, target);
         } catch (error) {
             console.error(
                 `${LOG_PREFIX} action: move_resize_frame failed for ${presetName}: ` +
                 `${this._formatError(error)}`
             );
         }
+    }
+
+    _schedulePostResizeCorrection(window, presetName, workArea, target) {
+        if (![PRESETS.LEFT, PRESETS.RIGHT, PRESETS.CENTER].includes(presetName))
+            return;
+
+        const sourceId = GLib.timeout_add(
+            GLib.PRIORITY_DEFAULT,
+            POST_RESIZE_CORRECTION_DELAY_MS,
+            () => {
+                this._pendingCorrectionIds = this._pendingCorrectionIds.filter(id => id !== sourceId);
+                this._postResizeCorrection(window, presetName, workArea, target);
+                return GLib.SOURCE_REMOVE;
+            }
+        );
+
+        this._pendingCorrectionIds.push(sourceId);
+    }
+
+    _postResizeCorrection(window, presetName, workArea, requestedTarget) {
+        try {
+            const actualFrame = window.get_frame_rect();
+            const correctedTarget = this._calculateCorrectionGeometry(
+                presetName,
+                workArea,
+                requestedTarget,
+                actualFrame
+            );
+
+            if (!correctedTarget || !this._isUsableGeometry(correctedTarget))
+                return;
+
+            if (this._isNearlySameFrame(actualFrame, correctedTarget)) {
+                console.log(
+                    `${LOG_PREFIX} action: post-correction not needed for ${presetName}: ` +
+                    `actual=${actualFrame.x},${actualFrame.y} ${actualFrame.width}x${actualFrame.height}`
+                );
+                return;
+            }
+
+            window.move_resize_frame(
+                true,
+                correctedTarget.x,
+                correctedTarget.y,
+                correctedTarget.width,
+                correctedTarget.height
+            );
+
+            console.log(
+                `${LOG_PREFIX} action: post-corrected preset ${presetName}: ` +
+                `actual=${actualFrame.x},${actualFrame.y} ${actualFrame.width}x${actualFrame.height}, ` +
+                `corrected=${correctedTarget.x},${correctedTarget.y} ${correctedTarget.width}x${correctedTarget.height}`
+            );
+        } catch (error) {
+            console.error(`${LOG_PREFIX} action: post-correction failed for ${presetName}: ${this._formatError(error)}`);
+        }
+    }
+
+    _calculateCorrectionGeometry(presetName, workArea, requestedTarget, actualFrame) {
+        switch (presetName) {
+        case PRESETS.LEFT:
+            return this._clampGeometryToWorkArea({
+                x: workArea.x,
+                y: workArea.y,
+                width: actualFrame.width,
+                height: actualFrame.height,
+            }, workArea);
+
+        case PRESETS.RIGHT:
+            return this._clampGeometryToWorkArea({
+                x: workArea.x + workArea.width - actualFrame.width,
+                y: workArea.y,
+                width: actualFrame.width,
+                height: actualFrame.height,
+            }, workArea);
+
+        case PRESETS.CENTER:
+            return this._clampGeometryToWorkArea({
+                x: workArea.x + Math.floor((workArea.width - actualFrame.width) / 2),
+                y: workArea.y + Math.floor((workArea.height - actualFrame.height) / 2),
+                width: actualFrame.width,
+                height: actualFrame.height,
+            }, workArea);
+
+        default:
+            return requestedTarget;
+        }
+    }
+
+    _isNearlySameFrame(frameRect, target) {
+        return Math.abs(frameRect.x - target.x) <= 1 &&
+            Math.abs(frameRect.y - target.y) <= 1 &&
+            Math.abs(frameRect.width - target.width) <= 1 &&
+            Math.abs(frameRect.height - target.height) <= 1;
     }
 
     _unmaximizeBestEffort(window) {
