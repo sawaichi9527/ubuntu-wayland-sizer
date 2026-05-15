@@ -5,26 +5,32 @@
 The preferred physical key gesture for development testing is:
 
 ```text
-Right Super + Right Alt + Arrow
+Right Super + Right Alt + selected action key
 ```
 
 This is intended to reduce accidental activation during normal desktop use.
 
 ## Current Technical Binding
 
-The current GNOME Shell/GSettings accelerator format uses logical modifier masks:
+The current GNOME Shell/GSettings accelerator format uses logical modifier masks.
+
+Current defaults:
 
 ```text
-<Super><Alt>Left
-<Super><Alt>Right
-<Super><Alt>Up
-<Super><Alt>Down
+<Super><Alt>Left   -> Left half
+<Super><Alt>Right  -> Right half
+<Super><Alt>F      -> Full workarea
+<Super><Alt>C      -> Center 1280x720
 ```
+
+Left/right half actions intentionally keep arrow keys because they match the action direction.
+
+Full and center actions intentionally avoid Up/Down arrow defaults because GNOME/Ubuntu may reserve upward/downward arrow combinations for overview or window-management behavior.
 
 In practice, these bindings usually mean:
 
 ```text
-Any Super + Any Alt + Arrow
+Any Super + Any Alt + action key
 ```
 
 They do not reliably distinguish left/right modifier keys.
@@ -47,7 +53,7 @@ A true right-side-only binding would likely require lower-level key event tracki
 global.stage captured-event
 → track Super_R press/release
 → track Alt_R / ISO_Level3_Shift press/release
-→ dispatch on Arrow key press
+→ dispatch on action key press
 ```
 
 This is intentionally deferred because it may be affected by:
@@ -73,4 +79,4 @@ show-menu
 cycle-presets
 ```
 
-The default binding may remain `<Super><Alt>Arrow`, while documentation can recommend physically pressing the right-side modifier keys when available.
+The default binding may remain `<Super><Alt>...`, while documentation can recommend physically pressing the right-side modifier keys when available.
