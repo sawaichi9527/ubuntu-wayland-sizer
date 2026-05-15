@@ -11,6 +11,10 @@ const POST_RESIZE_CORRECTION_DELAY_MS = 90;
 const FULL_WORKAREA_TOLERANCE_PX = 2;
 const DEFAULT_CENTER_WIDTH = 1280;
 const DEFAULT_CENTER_HEIGHT = 720;
+const COMPACT_CENTER_WIDTH = 800;
+const COMPACT_CENTER_HEIGHT = 600;
+const LARGE_CENTER_WIDTH = 1440;
+const LARGE_CENTER_HEIGHT = 768;
 const MIN_CENTER_SIZE = 100;
 
 const PRESETS = Object.freeze({
@@ -18,6 +22,8 @@ const PRESETS = Object.freeze({
     RIGHT: 'right',
     FULL: 'full',
     CENTER: 'center',
+    CENTER_COMPACT: 'center-compact',
+    CENTER_LARGE: 'center-large',
 });
 
 const KEYBINDINGS = Object.freeze([
@@ -25,6 +31,8 @@ const KEYBINDINGS = Object.freeze([
     ['resize-right', PRESETS.RIGHT],
     ['resize-full', PRESETS.FULL],
     ['resize-center', PRESETS.CENTER],
+    ['resize-center-compact', PRESETS.CENTER_COMPACT],
+    ['resize-center-large', PRESETS.CENTER_LARGE],
 ]);
 
 export default class UbuntuWaylandSizerExtension extends Extension {
@@ -202,7 +210,7 @@ export default class UbuntuWaylandSizerExtension extends Extension {
     }
 
     _schedulePostResizeCorrection(window, presetName, workArea, target) {
-        if (![PRESETS.LEFT, PRESETS.RIGHT, PRESETS.CENTER].includes(presetName))
+        if (![PRESETS.LEFT, PRESETS.RIGHT, PRESETS.CENTER, PRESETS.CENTER_COMPACT, PRESETS.CENTER_LARGE].includes(presetName))
             return;
 
         this._scheduleTimeout(POST_RESIZE_CORRECTION_DELAY_MS, () => {
@@ -303,6 +311,8 @@ export default class UbuntuWaylandSizerExtension extends Extension {
             }, workArea);
 
         case PRESETS.CENTER:
+        case PRESETS.CENTER_COMPACT:
+        case PRESETS.CENTER_LARGE:
             return this._clampGeometryToWorkArea({
                 x: workArea.x + Math.floor((workArea.width - actualFrame.width) / 2),
                 y: workArea.y + Math.floor((workArea.height - actualFrame.height) / 2),
@@ -427,27 +437,41 @@ export default class UbuntuWaylandSizerExtension extends Extension {
                 height: workArea.height,
             }, workArea);
 
-        case PRESETS.CENTER: {
-            const centerSize = this._readCenterSize();
-            const targetWidth = Math.min(centerSize.width, workArea.width);
-            const targetHeight = Math.min(centerSize.height, workArea.height);
+        case PRESETS.CENTER:
+            return this._calculateCenterPresetGeometry(presetName, workArea, this._readCenterSize());
 
-            this._debugLog(
-                `action: center preset size: configured=${centerSize.width}x${centerSize.height}, ` +
-                `target=${targetWidth}x${targetHeight}`
-            );
+        case PRESETS.CENTER_COMPACT:
+            return this._calculateCenterPresetGeometry(presetName, workArea, {
+                width: COMPACT_CENTER_WIDTH,
+                height: COMPACT_CENTER_HEIGHT,
+            });
 
-            return this._clampGeometryToWorkArea({
-                x: workArea.x + Math.floor((workArea.width - targetWidth) / 2),
-                y: workArea.y + Math.floor((workArea.height - targetHeight) / 2),
-                width: targetWidth,
-                height: targetHeight,
-            }, workArea);
-        }
+        case PRESETS.CENTER_LARGE:
+            return this._calculateCenterPresetGeometry(presetName, workArea, {
+                width: LARGE_CENTER_WIDTH,
+                height: LARGE_CENTER_HEIGHT,
+            });
 
         default:
             return null;
         }
+    }
+
+    _calculateCenterPresetGeometry(presetName, workArea, centerSize) {
+        const targetWidth = Math.min(centerSize.width, workArea.width);
+        const targetHeight = Math.min(centerSize.height, workArea.height);
+
+        this._debugLog(
+            `action: ${presetName} preset size: configured=${centerSize.width}x${centerSize.height}, ` +
+            `target=${targetWidth}x${targetHeight}`
+        );
+
+        return this._clampGeometryToWorkArea({
+            x: workArea.x + Math.floor((workArea.width - targetWidth) / 2),
+            y: workArea.y + Math.floor((workArea.height - targetHeight) / 2),
+            width: targetWidth,
+            height: targetHeight,
+        }, workArea);
     }
 
     _clampGeometryToWorkArea(geometry, workArea) {
