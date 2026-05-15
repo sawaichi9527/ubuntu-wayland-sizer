@@ -331,14 +331,7 @@ export default class UbuntuWaylandSizerExtension extends Extension {
     }
 
     _cleanup() {
-        if (this._presetPopupDialog) {
-            try {
-                this._presetPopupDialog.close();
-                this._presetPopupDialog.destroy();
-            } catch (error) {
-                console.error(`${LOG_PREFIX} cleanup: failed to destroy preset popup: ${this._formatError(error)}`);
-            }
-        }
+        this._closePresetPopupDialog('cleanup');
 
         if (this._pendingTimeoutIds) {
             for (const sourceId of this._pendingTimeoutIds) {
@@ -385,11 +378,7 @@ export default class UbuntuWaylandSizerExtension extends Extension {
         }
 
         try {
-            if (this._presetPopupDialog) {
-                this._presetPopupDialog.close();
-                this._presetPopupDialog.destroy();
-                this._presetPopupDialog = null;
-            }
+            this._closePresetPopupDialog('replace');
 
             const context = this._getWindowContext(window);
             this._debugLog(
@@ -403,6 +392,21 @@ export default class UbuntuWaylandSizerExtension extends Extension {
         } catch (error) {
             console.error(`${LOG_PREFIX} popup: failed to open preset popup: ${this._formatError(error)}`);
             this._presetPopupDialog = null;
+        }
+    }
+
+    _closePresetPopupDialog(reason) {
+        const dialog = this._presetPopupDialog;
+        this._presetPopupDialog = null;
+
+        if (!dialog)
+            return;
+
+        try {
+            dialog.close();
+            this._debugLog(`popup: closed previous dialog (${reason})`);
+        } catch (error) {
+            this._debugLog(`popup: previous dialog already closed/disposed (${reason})`);
         }
     }
 
