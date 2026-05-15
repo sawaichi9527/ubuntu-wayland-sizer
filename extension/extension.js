@@ -6,6 +6,7 @@ import { Extension } from 'resource:///org/gnome/shell/extensions/extension.js';
 import * as Main from 'resource:///org/gnome/shell/ui/main.js';
 
 const LOG_PREFIX = '[ubuntu-wayland-sizer]';
+const POST_UNMAXIMIZE_RESIZE_DELAY_MS = 120;
 const POST_RESIZE_CORRECTION_DELAY_MS = 80;
 
 const PRESETS = Object.freeze({
@@ -29,7 +30,7 @@ export default class UbuntuWaylandSizerExtension extends Extension {
         try {
             this._settings = this.getSettings();
             this._registeredKeybindings = [];
-            this._pendingCorrectionIds = [];
+            this._pendingTimeoutIds = [];
             console.log(`${LOG_PREFIX} enable: settings loaded from metadata settings-schema`);
 
             for (const [keybindingName, presetName] of KEYBINDINGS) {
@@ -60,12 +61,12 @@ export default class UbuntuWaylandSizerExtension extends Extension {
     }
 
     _cleanup() {
-        if (this._pendingCorrectionIds) {
-            for (const sourceId of this._pendingCorrectionIds) {
+        if (this._pendingTimeoutIds) {
+            for (const sourceId of this._pendingTimeoutIds) {
                 try {
                     GLib.source_remove(sourceId);
                 } catch (error) {
-                    console.error(`${LOG_PREFIX} cleanup: failed to remove pending correction ${sourceId}: ${this._formatError(error)}`);
+                    console.error(`${LOG_PREFIX} cleanup: failed to remove pending timeout ${sourceId}: ${this._formatError(error)}`);
                 }
             }
         }
@@ -81,7 +82,7 @@ export default class UbuntuWaylandSizerExtension extends Extension {
             }
         }
 
-        this._pendingCorrectionIds = [];
+        this._pendingTimeoutIds = [];
         this._registeredKeybindings = [];
         this._settings = null;
     }
@@ -101,6 +102,28 @@ export default class UbuntuWaylandSizerExtension extends Extension {
             return;
         }
 
+        if (this._isWindowMaximized(window)) {
+            try {
+                window.unmaximize();
+                console.log(
+                    `${LOG_PREFIX} action: unmaximized target window; ` +
+                    `deferring preset ${presetName} by ${POST_UNMAXIMIZE_RESIZE_DELAY_MS}ms`
+                );
+
+                this._scheduleTimeout(POST_UNMAXIMIZE_RESIZE_DELAY_MS, () => {
+                    this._applyPresetToWindow(window, presetName, 'after-unmaximize');
+                });
+            } catch (error) {
+                console.error(`${LOG_PREFIX} action: unmaximize failed; applying preset immediately: ${this._formatError(error)}`);
+                this._applyPresetToWindow(window, presetName, 'unmaximize-failed');
+            }
+            return;
+        }
+
+        this._applyPresetToWindow(window, presetName, 'direct');
+    }
+
+    _applyPresetToWindow(window, presetName, reason) {
         const monitorIndex = window.get_monitor();
         const workspace = global.workspace_manager.get_active_workspace();
         const workArea = workspace.get_work_area_for_monitor(monitorIndex);
@@ -108,7 +131,7 @@ export default class UbuntuWaylandSizerExtension extends Extension {
         const target = this._calculatePresetGeometry(presetName, workArea, frameRect);
 
         console.log(
-            `${LOG_PREFIX} action: geometry context: ` +
+            `${LOG_PREFIX} action: geometry context (${reason}): ` +
             `monitor=${monitorIndex}, ` +
             `workarea=${workArea.x},${workArea.y} ${workArea.width}x${workArea.height}, ` +
             `frame=${frameRect.x},${frameRect.y} ${frameRect.width}x${frameRect.height}`
@@ -126,8 +149,6 @@ export default class UbuntuWaylandSizerExtension extends Extension {
             );
             return;
         }
-
-        this._unmaximizeBestEffort(window);
 
         try {
             window.move_resize_frame(
@@ -156,21 +177,33 @@ export default class UbuntuWaylandSizerExtension extends Extension {
         if (![PRESETS.LEFT, PRESETS.RIGHT, PRESETS.CENTER].includes(presetName))
             return;
 
+        this._scheduleTimeout(POST_RESIZE_CORRECTION_DELAY_MS, () => {
+            this._postResizeCorrection(window, presetName, workArea, target);
+        });
+    }
+
+    _scheduleTimeout(delayMs, callback) {
         const sourceId = GLib.timeout_add(
             GLib.PRIORITY_DEFAULT,
-            POST_RESIZE_CORRECTION_DELAY_MS,
+            delayMs,
             () => {
-                this._pendingCorrectionIds = this._pendingCorrectionIds.filter(id => id !== sourceId);
-                this._postResizeCorrection(window, presetName, workArea, target);
+                this._pendingTimeoutIds = this._pendingTimeoutIds.filter(id => id !== sourceId);
+                callback();
                 return GLib.SOURCE_REMOVE;
             }
         );
 
-        this._pendingCorrectionIds.push(sourceId);
+        this._pendingTimeoutIds.push(sourceId);
+        return sourceId;
     }
 
     _postResizeCorrection(window, presetName, workArea, requestedTarget) {
         try {
+            if (this._isWindowMaximized(window)) {
+                console.log(`${LOG_PREFIX} action: post-correction skipped for maximized window: ${presetName}`);
+                return;
+            }
+
             const actualFrame = window.get_frame_rect();
             const correctedTarget = this._calculateCorrectionGeometry(
                 presetName,
@@ -246,14 +279,12 @@ export default class UbuntuWaylandSizerExtension extends Extension {
             Math.abs(frameRect.height - target.height) <= 1;
     }
 
-    _unmaximizeBestEffort(window) {
+    _isWindowMaximized(window) {
         try {
-            if (window.get_maximized && window.get_maximized() !== 0) {
-                window.unmaximize();
-                console.log(`${LOG_PREFIX} action: unmaximized target window`);
-            }
+            return Boolean(window.get_maximized && window.get_maximized() !== 0);
         } catch (error) {
-            console.error(`${LOG_PREFIX} action: unmaximize skipped/failed: ${this._formatError(error)}`);
+            console.error(`${LOG_PREFIX} action: failed to check maximized state: ${this._formatError(error)}`);
+            return false;
         }
     }
 
