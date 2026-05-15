@@ -1,9 +1,11 @@
 import GLib from 'gi://GLib';
 import Meta from 'gi://Meta';
 import Shell from 'gi://Shell';
+import St from 'gi://St';
 
 import { Extension } from 'resource:///org/gnome/shell/extensions/extension.js';
 import * as Main from 'resource:///org/gnome/shell/ui/main.js';
+import * as ModalDialog from 'resource:///org/gnome/shell/ui/modalDialog.js';
 
 const LOG_PREFIX = '[ubuntu-wayland-sizer]';
 const POST_UNMAXIMIZE_RESIZE_DELAY_MS = 180;
@@ -128,6 +130,139 @@ const CYCLE_KEYBINDINGS = Object.freeze([
     ['cycle-center-previous', CYCLE_DIRECTIONS.PREVIOUS],
 ]);
 
+const POPUP_KEYBINDINGS = Object.freeze([
+    'open-preset-popup',
+]);
+
+const POPUP_PRESET_GROUPS = Object.freeze([
+    Object.freeze({
+        title: 'Center Presets',
+        presets: Object.freeze([
+            PRESETS.CENTER_COMPACT,
+            PRESETS.CENTER,
+            PRESETS.CENTER_LARGE,
+        ]),
+    }),
+    Object.freeze({
+        title: 'Window Positions',
+        presets: Object.freeze([
+            PRESETS.LEFT,
+            PRESETS.RIGHT,
+            PRESETS.FULL,
+        ]),
+    }),
+]);
+
+class PresetPopupDialog extends ModalDialog.ModalDialog {
+    constructor(extension, window, context) {
+        super({ styleClass: 'ubuntu-wayland-sizer-dialog' });
+
+        this._extension = extension;
+        this._window = window;
+        this._context = context;
+
+        this._buildLayout();
+        this.setButtons([
+            {
+                label: 'Close',
+                action: () => this.close(),
+                key: Clutter?.KEY_Escape,
+            },
+        ]);
+    }
+
+    _buildLayout() {
+        const content = new St.BoxLayout({
+            vertical: true,
+            style: 'spacing: 12px; min-width: 520px;',
+        });
+
+        content.add_child(new St.Label({
+            text: 'Ubuntu Wayland Sizer',
+            style: 'font-size: 20px; font-weight: bold;',
+        }));
+
+        content.add_child(this._buildGeometrySection());
+
+        for (const group of POPUP_PRESET_GROUPS)
+            content.add_child(this._buildPresetGroup(group));
+
+        this.contentLayout.add_child(content);
+    }
+
+    _buildGeometrySection() {
+        const { monitorIndex, workArea, frameRect } = this._context;
+        const relativeX = frameRect.x - workArea.x;
+        const relativeY = frameRect.y - workArea.y;
+
+        const box = new St.BoxLayout({
+            vertical: true,
+            style: 'spacing: 4px; padding: 12px; border-radius: 8px; background-color: rgba(255,255,255,0.08);',
+        });
+
+        box.add_child(new St.Label({
+            text: 'Focused Window',
+            style: 'font-weight: bold;',
+        }));
+        box.add_child(new St.Label({ text: `Monitor: ${monitorIndex}` }));
+        box.add_child(new St.Label({ text: `Frame: x=${frameRect.x} y=${frameRect.y} w=${frameRect.width} h=${frameRect.height}` }));
+        box.add_child(new St.Label({ text: `Workarea: x=${workArea.x} y=${workArea.y} w=${workArea.width} h=${workArea.height}` }));
+        box.add_child(new St.Label({ text: `Relative: x=${relativeX} y=${relativeY} w=${frameRect.width} h=${frameRect.height}` }));
+
+        return box;
+    }
+
+    _buildPresetGroup(group) {
+        const box = new St.BoxLayout({
+            vertical: true,
+            style: 'spacing: 6px;',
+        });
+
+        box.add_child(new St.Label({
+            text: group.title,
+            style: 'font-weight: bold; padding-top: 6px;',
+        }));
+
+        for (const presetName of group.presets) {
+            const definition = PRESET_DEFINITIONS[presetName];
+            const button = new St.Button({
+                label: this._formatPresetButtonLabel(presetName, definition),
+                can_focus: true,
+                style: 'padding: 8px 12px; border-radius: 6px; background-color: rgba(255,255,255,0.10); text-align: left;',
+            });
+
+            button.connect('clicked', () => {
+                this.close();
+                this._extension._debugLog(`popup: selected preset ${presetName}`);
+                this._extension._applyPresetToFocusedWindow(presetName);
+            });
+
+            box.add_child(button);
+        }
+
+        return box;
+    }
+
+    _formatPresetButtonLabel(presetName, definition) {
+        switch (definition?.type) {
+        case PRESET_TYPES.LEFT_HALF:
+            return `${definition.label} — current workarea left half`;
+        case PRESET_TYPES.RIGHT_HALF:
+            return `${definition.label} — current workarea right half`;
+        case PRESET_TYPES.FULL_WORKAREA:
+            return `${definition.label} — current workarea`;
+        case PRESET_TYPES.CUSTOM_CENTER: {
+            const size = this._extension._readCenterSize();
+            return `${definition.label} — ${size.width}x${size.height}`;
+        }
+        case PRESET_TYPES.FIXED_CENTER:
+            return `${definition.label} — ${definition.size.width}x${definition.size.height}`;
+        default:
+            return presetName;
+        }
+    }
+}
+
 export default class UbuntuWaylandSizerExtension extends Extension {
     enable() {
         console.log(`${LOG_PREFIX} enable: start`);
@@ -137,6 +272,7 @@ export default class UbuntuWaylandSizerExtension extends Extension {
             this._registeredKeybindings = [];
             this._pendingTimeoutIds = [];
             this._centerCycleIndex = UNKNOWN_CYCLE_INDEX;
+            this._presetPopupDialog = null;
             this._debugLogging = this._readDebugLogging();
             this._debugLog(`enable: settings loaded from metadata settings-schema; debug-logging=${this._debugLogging}`);
 
@@ -166,6 +302,19 @@ export default class UbuntuWaylandSizerExtension extends Extension {
                 this._debugLog(`enable: keybinding registered: ${keybindingName} -> center-cycle(${direction})`);
             }
 
+            for (const keybindingName of POPUP_KEYBINDINGS) {
+                Main.wm.addKeybinding(
+                    keybindingName,
+                    this._settings,
+                    Meta.KeyBindingFlags.NONE,
+                    Shell.ActionMode.NORMAL,
+                    () => this._openPresetPopup()
+                );
+
+                this._registeredKeybindings.push(keybindingName);
+                this._debugLog(`enable: keybinding registered: ${keybindingName} -> preset-popup`);
+            }
+
             console.log(`${LOG_PREFIX} enabled`);
         } catch (error) {
             console.error(`${LOG_PREFIX} enable failed: ${this._formatError(error)}`);
@@ -181,6 +330,15 @@ export default class UbuntuWaylandSizerExtension extends Extension {
     }
 
     _cleanup() {
+        if (this._presetPopupDialog) {
+            try {
+                this._presetPopupDialog.close();
+                this._presetPopupDialog.destroy();
+            } catch (error) {
+                console.error(`${LOG_PREFIX} cleanup: failed to destroy preset popup: ${this._formatError(error)}`);
+            }
+        }
+
         if (this._pendingTimeoutIds) {
             for (const sourceId of this._pendingTimeoutIds) {
                 try {
@@ -205,8 +363,46 @@ export default class UbuntuWaylandSizerExtension extends Extension {
         this._pendingTimeoutIds = [];
         this._registeredKeybindings = [];
         this._centerCycleIndex = UNKNOWN_CYCLE_INDEX;
+        this._presetPopupDialog = null;
         this._debugLogging = true;
         this._settings = null;
+    }
+
+    _openPresetPopup() {
+        this._debugLog('popup: open requested');
+
+        const window = global.display.get_focus_window();
+
+        if (!window) {
+            this._debugLog('popup: no focused window');
+            return;
+        }
+
+        if (window.window_type !== Meta.WindowType.NORMAL) {
+            this._debugLog('popup: ignored non-normal window');
+            return;
+        }
+
+        try {
+            if (this._presetPopupDialog) {
+                this._presetPopupDialog.close();
+                this._presetPopupDialog.destroy();
+                this._presetPopupDialog = null;
+            }
+
+            const context = this._getWindowContext(window);
+            this._debugLog(
+                `popup: context monitor=${context.monitorIndex}, ` +
+                `workarea=${context.workArea.x},${context.workArea.y} ${context.workArea.width}x${context.workArea.height}, ` +
+                `frame=${context.frameRect.x},${context.frameRect.y} ${context.frameRect.width}x${context.frameRect.height}`
+            );
+
+            this._presetPopupDialog = new PresetPopupDialog(this, window, context);
+            this._presetPopupDialog.open();
+        } catch (error) {
+            console.error(`${LOG_PREFIX} popup: failed to open preset popup: ${this._formatError(error)}`);
+            this._presetPopupDialog = null;
+        }
     }
 
     _cycleCenterPreset(direction) {
