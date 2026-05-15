@@ -21,8 +21,20 @@
 
     <key name="resize-center" type="as">
       <default><![CDATA[['<Super><Alt>C']]]></default>
-      <summary>Resize focused window to a centered 1280x720 rectangle</summary>
-      <description>Keyboard shortcut for the centered fixed-size preset.</description>
+      <summary>Resize focused window to a centered rectangle</summary>
+      <description>Keyboard shortcut for the centered configurable-size preset.</description>
+    </key>
+
+    <key name="center-width" type="i">
+      <default>1280</default>
+      <summary>Center preset width</summary>
+      <description>Preferred width for the center preset before workarea clamping is applied.</description>
+    </key>
+
+    <key name="center-height" type="i">
+      <default>720</default>
+      <summary>Center preset height</summary>
+      <description>Preferred height for the center preset before workarea clamping is applied.</description>
     </key>
 
     <key name="debug-logging" type="b">
