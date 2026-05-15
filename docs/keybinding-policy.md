@@ -17,15 +17,13 @@ The current GNOME Shell/GSettings accelerator format uses logical modifier masks
 Current defaults:
 
 ```text
-<Super><Alt>Left   -> Left half
-<Super><Alt>Right  -> Right half
+<Super><Alt>H      -> Left half
+<Super><Alt>L      -> Right half
 <Super><Alt>F      -> Full workarea
 <Super><Alt>C      -> Center 1280x720
 ```
 
-Left/right half actions intentionally keep arrow keys because they match the action direction.
-
-Full and center actions intentionally avoid Up/Down arrow defaults because GNOME/Ubuntu may reserve upward/downward arrow combinations for overview or window-management behavior.
+Arrow-key defaults are intentionally avoided because GNOME/Ubuntu may reserve `Super+Alt+Arrow` combinations for window switching or window-management behavior. This was observed on Ubuntu 26.04, especially with a secondary monitor configured as portrait-right.
 
 In practice, these bindings usually mean:
 
