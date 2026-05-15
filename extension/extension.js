@@ -12,6 +12,7 @@ const FULL_WORKAREA_TOLERANCE_PX = 2;
 const DEFAULT_CENTER_WIDTH = 1280;
 const DEFAULT_CENTER_HEIGHT = 720;
 const MIN_CENTER_SIZE = 100;
+const UNKNOWN_CYCLE_INDEX = -1;
 
 const PRESETS = Object.freeze({
     LEFT: 'left',
@@ -102,13 +103,29 @@ const PRESET_DEFINITIONS = Object.freeze({
     }),
 });
 
-const KEYBINDINGS = Object.freeze([
+const CENTER_CYCLE_PRESETS = Object.freeze([
+    PRESETS.CENTER_COMPACT,
+    PRESETS.CENTER,
+    PRESETS.CENTER_LARGE,
+]);
+
+const CYCLE_DIRECTIONS = Object.freeze({
+    NEXT: 1,
+    PREVIOUS: -1,
+});
+
+const PRESET_KEYBINDINGS = Object.freeze([
     ['resize-left', PRESETS.LEFT],
     ['resize-right', PRESETS.RIGHT],
     ['resize-full', PRESETS.FULL],
     ['resize-center', PRESETS.CENTER],
     ['resize-center-compact', PRESETS.CENTER_COMPACT],
     ['resize-center-large', PRESETS.CENTER_LARGE],
+]);
+
+const CYCLE_KEYBINDINGS = Object.freeze([
+    ['cycle-center-next', CYCLE_DIRECTIONS.NEXT],
+    ['cycle-center-previous', CYCLE_DIRECTIONS.PREVIOUS],
 ]);
 
 export default class UbuntuWaylandSizerExtension extends Extension {
@@ -119,10 +136,11 @@ export default class UbuntuWaylandSizerExtension extends Extension {
             this._settings = this.getSettings();
             this._registeredKeybindings = [];
             this._pendingTimeoutIds = [];
+            this._centerCycleIndex = UNKNOWN_CYCLE_INDEX;
             this._debugLogging = this._readDebugLogging();
             this._debugLog(`enable: settings loaded from metadata settings-schema; debug-logging=${this._debugLogging}`);
 
-            for (const [keybindingName, presetName] of KEYBINDINGS) {
+            for (const [keybindingName, presetName] of PRESET_KEYBINDINGS) {
                 Main.wm.addKeybinding(
                     keybindingName,
                     this._settings,
@@ -133,6 +151,19 @@ export default class UbuntuWaylandSizerExtension extends Extension {
 
                 this._registeredKeybindings.push(keybindingName);
                 this._debugLog(`enable: keybinding registered: ${keybindingName} -> ${presetName}`);
+            }
+
+            for (const [keybindingName, direction] of CYCLE_KEYBINDINGS) {
+                Main.wm.addKeybinding(
+                    keybindingName,
+                    this._settings,
+                    Meta.KeyBindingFlags.NONE,
+                    Shell.ActionMode.NORMAL,
+                    () => this._cycleCenterPreset(direction)
+                );
+
+                this._registeredKeybindings.push(keybindingName);
+                this._debugLog(`enable: keybinding registered: ${keybindingName} -> center-cycle(${direction})`);
             }
 
             console.log(`${LOG_PREFIX} enabled`);
@@ -173,8 +204,84 @@ export default class UbuntuWaylandSizerExtension extends Extension {
 
         this._pendingTimeoutIds = [];
         this._registeredKeybindings = [];
+        this._centerCycleIndex = UNKNOWN_CYCLE_INDEX;
         this._debugLogging = true;
         this._settings = null;
+    }
+
+    _cycleCenterPreset(direction) {
+        if (!CENTER_CYCLE_PRESETS.length) {
+            this._debugLog('action: center cycle ignored because preset list is empty');
+            return;
+        }
+
+        const currentIndex = this._resolveCenterCycleIndex();
+        const nextIndex = this._wrapCycleIndex(currentIndex + direction, CENTER_CYCLE_PRESETS.length);
+        const nextPreset = CENTER_CYCLE_PRESETS[nextIndex];
+
+        this._centerCycleIndex = nextIndex;
+        this._debugLog(
+            `action: center cycle ${direction > 0 ? 'next' : 'previous'}: ` +
+            `index=${nextIndex}, preset=${nextPreset}`
+        );
+
+        this._applyPresetToFocusedWindow(nextPreset);
+    }
+
+    _resolveCenterCycleIndex() {
+        const inferredIndex = this._inferCenterCycleIndexFromFocusedWindow();
+
+        if (inferredIndex !== UNKNOWN_CYCLE_INDEX)
+            return inferredIndex;
+
+        if (this._isValidCenterCycleIndex(this._centerCycleIndex))
+            return this._centerCycleIndex;
+
+        return this._wrapCycleIndex(UNKNOWN_CYCLE_INDEX, CENTER_CYCLE_PRESETS.length);
+    }
+
+    _inferCenterCycleIndexFromFocusedWindow() {
+        const window = global.display.get_focus_window();
+
+        if (!window || window.window_type !== Meta.WindowType.NORMAL)
+            return UNKNOWN_CYCLE_INDEX;
+
+        try {
+            const context = this._getWindowContext(window);
+            const frameRect = window.get_frame_rect();
+
+            for (let index = 0; index < CENTER_CYCLE_PRESETS.length; index++) {
+                const presetName = CENTER_CYCLE_PRESETS[index];
+                const target = this._calculatePresetGeometry(presetName, context.workArea, frameRect);
+
+                if (target && this._isNearlySameFrame(frameRect, target)) {
+                    this._debugLog(`action: inferred center cycle index=${index}, preset=${presetName}`);
+                    return index;
+                }
+            }
+        } catch (error) {
+            console.error(`${LOG_PREFIX} action: failed to infer center cycle index: ${this._formatError(error)}`);
+        }
+
+        return UNKNOWN_CYCLE_INDEX;
+    }
+
+    _wrapCycleIndex(index, length) {
+        return ((index % length) + length) % length;
+    }
+
+    _isValidCenterCycleIndex(index) {
+        return Number.isInteger(index) && index >= 0 && index < CENTER_CYCLE_PRESETS.length;
+    }
+
+    _rememberCenterCyclePreset(presetName) {
+        const index = CENTER_CYCLE_PRESETS.indexOf(presetName);
+
+        if (index === -1)
+            return;
+
+        this._centerCycleIndex = index;
+        this._debugLog(`action: remembered center cycle index=${index}, preset=${presetName}`);
     }
 
     _applyPresetToFocusedWindow(presetName) {
@@ -262,6 +369,7 @@ export default class UbuntuWaylandSizerExtension extends Extension {
             window.move_frame(true, target.x, target.y);
             window.move_resize_frame(true, target.x, target.y, target.width, target.height);
 
+            this._rememberCenterCyclePreset(presetName);
             this._debugLog(
                 `action: applied preset ${presetName}: ` +
                 `${target.x},${target.y} ${target.width}x${target.height}`
