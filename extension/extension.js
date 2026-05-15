@@ -11,10 +11,6 @@ const POST_RESIZE_CORRECTION_DELAY_MS = 90;
 const FULL_WORKAREA_TOLERANCE_PX = 2;
 const DEFAULT_CENTER_WIDTH = 1280;
 const DEFAULT_CENTER_HEIGHT = 720;
-const COMPACT_CENTER_WIDTH = 800;
-const COMPACT_CENTER_HEIGHT = 600;
-const LARGE_CENTER_WIDTH = 1440;
-const LARGE_CENTER_HEIGHT = 768;
 const MIN_CENTER_SIZE = 100;
 
 const PRESETS = Object.freeze({
@@ -24,6 +20,58 @@ const PRESETS = Object.freeze({
     CENTER: 'center',
     CENTER_COMPACT: 'center-compact',
     CENTER_LARGE: 'center-large',
+});
+
+const PRESET_TYPES = Object.freeze({
+    LEFT_HALF: 'left-half',
+    RIGHT_HALF: 'right-half',
+    FULL_WORKAREA: 'full-workarea',
+    CUSTOM_CENTER: 'custom-center',
+    FIXED_CENTER: 'fixed-center',
+});
+
+const SIZE_LIBRARY = Object.freeze({
+    BASIC_640X480: Object.freeze({ id: 'basic-640x480', group: 'basic', label: '640x480', width: 640, height: 480 }),
+    BASIC_800X600: Object.freeze({ id: 'basic-800x600', group: 'basic', label: '800x600', width: 800, height: 600 }),
+    BASIC_1024X768: Object.freeze({ id: 'basic-1024x768', group: 'basic', label: '1024x768', width: 1024, height: 768 }),
+    BASIC_1152X864: Object.freeze({ id: 'basic-1152x864', group: 'basic', label: '1152x864', width: 1152, height: 864 }),
+    BASIC_1280X960: Object.freeze({ id: 'basic-1280x960', group: 'basic', label: '1280x960', width: 1280, height: 960 }),
+    LARGE_1440X768: Object.freeze({ id: 'large-1440x768', group: 'large', label: '1440x768', width: 1440, height: 768 }),
+});
+
+const PRESET_DEFINITIONS = Object.freeze({
+    [PRESETS.LEFT]: Object.freeze({
+        id: PRESETS.LEFT,
+        type: PRESET_TYPES.LEFT_HALF,
+        label: 'Left half',
+    }),
+    [PRESETS.RIGHT]: Object.freeze({
+        id: PRESETS.RIGHT,
+        type: PRESET_TYPES.RIGHT_HALF,
+        label: 'Right half',
+    }),
+    [PRESETS.FULL]: Object.freeze({
+        id: PRESETS.FULL,
+        type: PRESET_TYPES.FULL_WORKAREA,
+        label: 'Full workarea',
+    }),
+    [PRESETS.CENTER]: Object.freeze({
+        id: PRESETS.CENTER,
+        type: PRESET_TYPES.CUSTOM_CENTER,
+        label: 'Custom center',
+    }),
+    [PRESETS.CENTER_COMPACT]: Object.freeze({
+        id: PRESETS.CENTER_COMPACT,
+        type: PRESET_TYPES.FIXED_CENTER,
+        label: 'Compact center',
+        size: SIZE_LIBRARY.BASIC_800X600,
+    }),
+    [PRESETS.CENTER_LARGE]: Object.freeze({
+        id: PRESETS.CENTER_LARGE,
+        type: PRESET_TYPES.FIXED_CENTER,
+        label: 'Large center',
+        size: SIZE_LIBRARY.LARGE_1440X768,
+    }),
 });
 
 const KEYBINDINGS = Object.freeze([
@@ -293,8 +341,10 @@ export default class UbuntuWaylandSizerExtension extends Extension {
     }
 
     _calculateCorrectionGeometry(presetName, workArea, requestedTarget, actualFrame) {
-        switch (presetName) {
-        case PRESETS.LEFT:
+        const definition = PRESET_DEFINITIONS[presetName];
+
+        switch (definition?.type) {
+        case PRESET_TYPES.LEFT_HALF:
             return this._clampGeometryToWorkArea({
                 x: workArea.x,
                 y: workArea.y,
@@ -302,7 +352,7 @@ export default class UbuntuWaylandSizerExtension extends Extension {
                 height: actualFrame.height,
             }, workArea);
 
-        case PRESETS.RIGHT:
+        case PRESET_TYPES.RIGHT_HALF:
             return this._clampGeometryToWorkArea({
                 x: workArea.x + workArea.width - actualFrame.width,
                 y: workArea.y,
@@ -310,9 +360,8 @@ export default class UbuntuWaylandSizerExtension extends Extension {
                 height: actualFrame.height,
             }, workArea);
 
-        case PRESETS.CENTER:
-        case PRESETS.CENTER_COMPACT:
-        case PRESETS.CENTER_LARGE:
+        case PRESET_TYPES.CUSTOM_CENTER:
+        case PRESET_TYPES.FIXED_CENTER:
             return this._clampGeometryToWorkArea({
                 x: workArea.x + Math.floor((workArea.width - actualFrame.width) / 2),
                 y: workArea.y + Math.floor((workArea.height - actualFrame.height) / 2),
@@ -410,10 +459,15 @@ export default class UbuntuWaylandSizerExtension extends Extension {
     }
 
     _calculatePresetGeometry(presetName, workArea, frameRect) {
+        const definition = PRESET_DEFINITIONS[presetName];
+
+        if (!definition)
+            return null;
+
         const halfWidth = Math.floor(workArea.width / 2);
 
-        switch (presetName) {
-        case PRESETS.LEFT:
+        switch (definition.type) {
+        case PRESET_TYPES.LEFT_HALF:
             return this._clampGeometryToWorkArea({
                 x: workArea.x,
                 y: workArea.y,
@@ -421,7 +475,7 @@ export default class UbuntuWaylandSizerExtension extends Extension {
                 height: workArea.height,
             }, workArea);
 
-        case PRESETS.RIGHT:
+        case PRESET_TYPES.RIGHT_HALF:
             return this._clampGeometryToWorkArea({
                 x: workArea.x + halfWidth,
                 y: workArea.y,
@@ -429,7 +483,7 @@ export default class UbuntuWaylandSizerExtension extends Extension {
                 height: workArea.height,
             }, workArea);
 
-        case PRESETS.FULL:
+        case PRESET_TYPES.FULL_WORKAREA:
             return this._clampGeometryToWorkArea({
                 x: workArea.x,
                 y: workArea.y,
@@ -437,32 +491,23 @@ export default class UbuntuWaylandSizerExtension extends Extension {
                 height: workArea.height,
             }, workArea);
 
-        case PRESETS.CENTER:
-            return this._calculateCenterPresetGeometry(presetName, workArea, this._readCenterSize());
+        case PRESET_TYPES.CUSTOM_CENTER:
+            return this._calculateCenterPresetGeometry(definition, workArea, this._readCenterSize());
 
-        case PRESETS.CENTER_COMPACT:
-            return this._calculateCenterPresetGeometry(presetName, workArea, {
-                width: COMPACT_CENTER_WIDTH,
-                height: COMPACT_CENTER_HEIGHT,
-            });
-
-        case PRESETS.CENTER_LARGE:
-            return this._calculateCenterPresetGeometry(presetName, workArea, {
-                width: LARGE_CENTER_WIDTH,
-                height: LARGE_CENTER_HEIGHT,
-            });
+        case PRESET_TYPES.FIXED_CENTER:
+            return this._calculateCenterPresetGeometry(definition, workArea, definition.size);
 
         default:
             return null;
         }
     }
 
-    _calculateCenterPresetGeometry(presetName, workArea, centerSize) {
+    _calculateCenterPresetGeometry(definition, workArea, centerSize) {
         const targetWidth = Math.min(centerSize.width, workArea.width);
         const targetHeight = Math.min(centerSize.height, workArea.height);
 
         this._debugLog(
-            `action: ${presetName} preset size: configured=${centerSize.width}x${centerSize.height}, ` +
+            `action: ${definition.id} preset size: configured=${centerSize.width}x${centerSize.height}, ` +
             `target=${targetWidth}x${targetHeight}`
         );
 
