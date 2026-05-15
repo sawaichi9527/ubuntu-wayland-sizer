@@ -1,4 +1,5 @@
 import GLib from 'gi://GLib';
+import GObject from 'gi://GObject';
 import Meta from 'gi://Meta';
 import Shell from 'gi://Shell';
 import St from 'gi://St';
@@ -153,9 +154,10 @@ const POPUP_PRESET_GROUPS = Object.freeze([
     }),
 ]);
 
+const PresetPopupDialog = GObject.registerClass(
 class PresetPopupDialog extends ModalDialog.ModalDialog {
-    constructor(extension, window, context) {
-        super({ styleClass: 'ubuntu-wayland-sizer-dialog' });
+    _init(extension, window, context) {
+        super._init({ styleClass: 'ubuntu-wayland-sizer-dialog' });
 
         this._extension = extension;
         this._window = window;
@@ -166,7 +168,6 @@ class PresetPopupDialog extends ModalDialog.ModalDialog {
             {
                 label: 'Close',
                 action: () => this.close(),
-                key: Clutter?.KEY_Escape,
             },
         ]);
     }
@@ -261,7 +262,7 @@ class PresetPopupDialog extends ModalDialog.ModalDialog {
             return presetName;
         }
     }
-}
+});
 
 export default class UbuntuWaylandSizerExtension extends Extension {
     enable() {
