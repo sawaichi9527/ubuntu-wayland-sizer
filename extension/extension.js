@@ -30,13 +30,41 @@ const PRESET_TYPES = Object.freeze({
     FIXED_CENTER: 'fixed-center',
 });
 
+const SIZE_GROUPS = Object.freeze({
+    BASIC: 'basic',
+    FOUR_THREE: '4:3',
+    SIXTEEN_NINE: '16:9',
+    SIXTEEN_TEN: '16:10',
+    LARGE: 'large',
+});
+
 const SIZE_LIBRARY = Object.freeze({
-    BASIC_640X480: Object.freeze({ id: 'basic-640x480', group: 'basic', label: '640x480', width: 640, height: 480 }),
-    BASIC_800X600: Object.freeze({ id: 'basic-800x600', group: 'basic', label: '800x600', width: 800, height: 600 }),
-    BASIC_1024X768: Object.freeze({ id: 'basic-1024x768', group: 'basic', label: '1024x768', width: 1024, height: 768 }),
-    BASIC_1152X864: Object.freeze({ id: 'basic-1152x864', group: 'basic', label: '1152x864', width: 1152, height: 864 }),
-    BASIC_1280X960: Object.freeze({ id: 'basic-1280x960', group: 'basic', label: '1280x960', width: 1280, height: 960 }),
-    LARGE_1440X768: Object.freeze({ id: 'large-1440x768', group: 'large', label: '1440x768', width: 1440, height: 768 }),
+    BASIC_640X480: Object.freeze({ id: 'basic-640x480', group: SIZE_GROUPS.BASIC, label: '640x480', width: 640, height: 480 }),
+    BASIC_800X600: Object.freeze({ id: 'basic-800x600', group: SIZE_GROUPS.BASIC, label: '800x600', width: 800, height: 600 }),
+    BASIC_1024X768: Object.freeze({ id: 'basic-1024x768', group: SIZE_GROUPS.BASIC, label: '1024x768', width: 1024, height: 768 }),
+    BASIC_1152X864: Object.freeze({ id: 'basic-1152x864', group: SIZE_GROUPS.BASIC, label: '1152x864', width: 1152, height: 864 }),
+    BASIC_1280X960: Object.freeze({ id: 'basic-1280x960', group: SIZE_GROUPS.BASIC, label: '1280x960', width: 1280, height: 960 }),
+
+    FOUR_THREE_640X480: Object.freeze({ id: '4-3-640x480', group: SIZE_GROUPS.FOUR_THREE, label: '640x480', width: 640, height: 480 }),
+    FOUR_THREE_800X600: Object.freeze({ id: '4-3-800x600', group: SIZE_GROUPS.FOUR_THREE, label: '800x600', width: 800, height: 600 }),
+    FOUR_THREE_1024X768: Object.freeze({ id: '4-3-1024x768', group: SIZE_GROUPS.FOUR_THREE, label: '1024x768', width: 1024, height: 768 }),
+    FOUR_THREE_1152X864: Object.freeze({ id: '4-3-1152x864', group: SIZE_GROUPS.FOUR_THREE, label: '1152x864', width: 1152, height: 864 }),
+    FOUR_THREE_1280X960: Object.freeze({ id: '4-3-1280x960', group: SIZE_GROUPS.FOUR_THREE, label: '1280x960', width: 1280, height: 960 }),
+    FOUR_THREE_1400X1050: Object.freeze({ id: '4-3-1400x1050', group: SIZE_GROUPS.FOUR_THREE, label: '1400x1050', width: 1400, height: 1050 }),
+    FOUR_THREE_1600X1200: Object.freeze({ id: '4-3-1600x1200', group: SIZE_GROUPS.FOUR_THREE, label: '1600x1200', width: 1600, height: 1200 }),
+
+    SIXTEEN_NINE_1280X720: Object.freeze({ id: '16-9-1280x720', group: SIZE_GROUPS.SIXTEEN_NINE, label: '1280x720', width: 1280, height: 720 }),
+    SIXTEEN_NINE_1366X768: Object.freeze({ id: '16-9-1366x768', group: SIZE_GROUPS.SIXTEEN_NINE, label: '1366x768', width: 1366, height: 768 }),
+    SIXTEEN_NINE_1600X900: Object.freeze({ id: '16-9-1600x900', group: SIZE_GROUPS.SIXTEEN_NINE, label: '1600x900', width: 1600, height: 900 }),
+    SIXTEEN_NINE_1920X1080: Object.freeze({ id: '16-9-1920x1080', group: SIZE_GROUPS.SIXTEEN_NINE, label: '1920x1080', width: 1920, height: 1080 }),
+    SIXTEEN_NINE_2560X1440: Object.freeze({ id: '16-9-2560x1440', group: SIZE_GROUPS.SIXTEEN_NINE, label: '2560x1440', width: 2560, height: 1440 }),
+
+    SIXTEEN_TEN_1280X800: Object.freeze({ id: '16-10-1280x800', group: SIZE_GROUPS.SIXTEEN_TEN, label: '1280x800', width: 1280, height: 800 }),
+    SIXTEEN_TEN_1440X900: Object.freeze({ id: '16-10-1440x900', group: SIZE_GROUPS.SIXTEEN_TEN, label: '1440x900', width: 1440, height: 900 }),
+    SIXTEEN_TEN_1680X1050: Object.freeze({ id: '16-10-1680x1050', group: SIZE_GROUPS.SIXTEEN_TEN, label: '1680x1050', width: 1680, height: 1050 }),
+    SIXTEEN_TEN_1920X1200: Object.freeze({ id: '16-10-1920x1200', group: SIZE_GROUPS.SIXTEEN_TEN, label: '1920x1200', width: 1920, height: 1200 }),
+
+    LARGE_1440X768: Object.freeze({ id: 'large-1440x768', group: SIZE_GROUPS.LARGE, label: '1440x768', width: 1440, height: 768 }),
 });
 
 const PRESET_DEFINITIONS = Object.freeze({
