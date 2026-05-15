@@ -9,6 +9,9 @@ const LOG_PREFIX = '[ubuntu-wayland-sizer]';
 const POST_UNMAXIMIZE_RESIZE_DELAY_MS = 180;
 const POST_RESIZE_CORRECTION_DELAY_MS = 90;
 const FULL_WORKAREA_TOLERANCE_PX = 2;
+const DEFAULT_CENTER_WIDTH = 1280;
+const DEFAULT_CENTER_HEIGHT = 720;
+const MIN_CENTER_SIZE = 100;
 
 const PRESETS = Object.freeze({
     LEFT: 'left',
@@ -425,8 +428,14 @@ export default class UbuntuWaylandSizerExtension extends Extension {
             }, workArea);
 
         case PRESETS.CENTER: {
-            const targetWidth = Math.min(1280, workArea.width);
-            const targetHeight = Math.min(720, workArea.height);
+            const centerSize = this._readCenterSize();
+            const targetWidth = Math.min(centerSize.width, workArea.width);
+            const targetHeight = Math.min(centerSize.height, workArea.height);
+
+            this._debugLog(
+                `action: center preset size: configured=${centerSize.width}x${centerSize.height}, ` +
+                `target=${targetWidth}x${targetHeight}`
+            );
 
             return this._clampGeometryToWorkArea({
                 x: workArea.x + Math.floor((workArea.width - targetWidth) / 2),
@@ -460,6 +469,24 @@ export default class UbuntuWaylandSizerExtension extends Extension {
             Number.isFinite(geometry.height) &&
             geometry.width > 0 &&
             geometry.height > 0;
+    }
+
+    _readCenterSize() {
+        try {
+            const width = this._settings?.get_int('center-width') ?? DEFAULT_CENTER_WIDTH;
+            const height = this._settings?.get_int('center-height') ?? DEFAULT_CENTER_HEIGHT;
+
+            return {
+                width: Math.max(MIN_CENTER_SIZE, width),
+                height: Math.max(MIN_CENTER_SIZE, height),
+            };
+        } catch (error) {
+            console.error(`${LOG_PREFIX} failed to read center size settings: ${this._formatError(error)}`);
+            return {
+                width: DEFAULT_CENTER_WIDTH,
+                height: DEFAULT_CENTER_HEIGHT,
+            };
+        }
     }
 
     _readDebugLogging() {
