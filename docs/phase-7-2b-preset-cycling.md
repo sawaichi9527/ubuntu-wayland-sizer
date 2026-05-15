@@ -175,6 +175,33 @@ Notes:
 - This did not block Firefox validation because repeated cycling recovered and final Firefox behavior was reported as normal on both monitors.
 - Keep this behavior in mind when testing slower or constraint-heavy applications.
 
+### Multi-app dual-monitor validation — PASS
+
+Applications confirmed by manual validation:
+
+- VSCode
+- Terminal
+- LibreOffice
+- Nautilus
+
+Validated behavior:
+
+- Center cycling shortcuts work normally on both monitors.
+- Direct center preset shortcuts work normally on both monitors.
+- Left, right, full, and center shortcuts work normally on both monitors.
+- Secondary portrait-right monitor clamping continues to behave as expected.
+- Full-workarea breakout continues to work before returning to centered presets.
+
+This expands Phase 7.2b validation from Firefox-only coverage to a mixed desktop application set, including Electron-style, terminal, office, and GNOME file manager behavior.
+
+Current validation status:
+
+```text
+Phase 7.2b implementation: COMPLETE
+Phase 7.2b Firefox dual-monitor validation: PASS
+Phase 7.2b multi-app dual-monitor validation: PASS
+```
+
 ## Known Limitations
 
 - Cycling currently covers only the three active centered presets.
@@ -186,12 +213,6 @@ Notes:
 These limitations are acceptable for Phase 7.2b because the purpose is to validate the cycling engine before adding UI.
 
 ## Next Candidate Phase
-
-Recommended next phase:
-
-```text
-Phase 7.2b-test — Manual validation and log review
-```
 
 After validation passes, a reasonable follow-up is:
 
