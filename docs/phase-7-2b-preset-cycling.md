@@ -139,6 +139,42 @@ Expected debug logs include:
 [ubuntu-wayland-sizer] action: remembered center cycle index=...
 ```
 
+## Validation Results
+
+### Firefox dual-monitor validation — PASS
+
+Environment:
+
+```text
+Application: Firefox
+Primary monitor workarea:   67,32 1853x1168
+Secondary monitor workarea: 1920,0 1080x1920
+```
+
+Validated behavior:
+
+- Center cycling works on the primary monitor.
+- Center cycling works on the secondary portrait-right monitor.
+- Forward cycle wraps correctly: `center-compact -> center -> center-large -> center-compact`.
+- Reverse cycle wraps correctly: `center-large -> center -> center-compact -> center-large`.
+- Direct center presets update the remembered cycle index.
+- Full-workarea breakout works before applying centered presets.
+- Left, right, full, and center presets continue to work after cycling.
+- Workarea clamping works on the secondary monitor where wide center presets clamp to 1080px width.
+
+Observed secondary monitor clamp examples:
+
+```text
+center       configured=1200x854 -> target=1080x854
+center-large configured=1440x768 -> target=1080x768
+```
+
+Notes:
+
+- Some primary-monitor rapid cycling logs showed a post-correction pass where Mutter temporarily reported the previous frame size before settling on the requested size in the next action.
+- This did not block Firefox validation because repeated cycling recovered and final Firefox behavior was reported as normal on both monitors.
+- Keep this behavior in mind when testing slower or constraint-heavy applications.
+
 ## Known Limitations
 
 - Cycling currently covers only the three active centered presets.
