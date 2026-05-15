@@ -2,27 +2,27 @@
 <schemalist>
   <schema id="org.gnome.shell.extensions.ubuntu-wayland-sizer" path="/org/gnome/shell/extensions/ubuntu-wayland-sizer/">
     <key name="resize-left" type="as">
-      <default><![CDATA[['<Super><Alt>Left']]]></default>
+      <default><![CDATA[['<Super><Alt>H']]]></default>
       <summary>Resize focused window to the left half of the current workarea</summary>
-      <description>Keyboard shortcut for the left-half preset.</description>
+      <description>Keyboard shortcut for the left-half preset. This intentionally avoids arrow keys because GNOME/Ubuntu may reserve Super+Alt+Arrow combinations for window switching or window management.</description>
     </key>
 
     <key name="resize-right" type="as">
-      <default><![CDATA[['<Super><Alt>Right']]]></default>
+      <default><![CDATA[['<Super><Alt>L']]]></default>
       <summary>Resize focused window to the right half of the current workarea</summary>
-      <description>Keyboard shortcut for the right-half preset.</description>
+      <description>Keyboard shortcut for the right-half preset. This intentionally avoids arrow keys because GNOME/Ubuntu may reserve Super+Alt+Arrow combinations for window switching or window management.</description>
     </key>
 
     <key name="resize-full" type="as">
       <default><![CDATA[['<Super><Alt>F']]]></default>
       <summary>Resize focused window to the full current workarea</summary>
-      <description>Keyboard shortcut for the full-workarea preset. This intentionally avoids Super+Alt+Up because GNOME/Ubuntu may reserve upward-arrow combinations for window overview or window management.</description>
+      <description>Keyboard shortcut for the full-workarea preset.</description>
     </key>
 
     <key name="resize-center" type="as">
       <default><![CDATA[['<Super><Alt>C']]]></default>
       <summary>Resize focused window to a centered 1280x720 rectangle</summary>
-      <description>Keyboard shortcut for the centered fixed-size preset. This intentionally avoids Super+Alt+Down because GNOME/Ubuntu may reserve arrow combinations for window management.</description>
+      <description>Keyboard shortcut for the centered fixed-size preset.</description>
     </key>
   </schema>
 </schemalist>
