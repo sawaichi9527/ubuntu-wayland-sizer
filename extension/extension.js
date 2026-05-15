@@ -5,7 +5,6 @@ import { Extension } from 'resource:///org/gnome/shell/extensions/extension.js';
 import * as Main from 'resource:///org/gnome/shell/ui/main.js';
 
 const LOG_PREFIX = '[ubuntu-wayland-sizer]';
-const SETTINGS_SCHEMA = 'org.gnome.shell.extensions.ubuntu-wayland-sizer';
 const KEYBINDING_RESIZE_LEFT = 'resize-left';
 
 export default class UbuntuWaylandSizerExtension extends Extension {
@@ -13,8 +12,8 @@ export default class UbuntuWaylandSizerExtension extends Extension {
         console.log(`${LOG_PREFIX} enable: start`);
 
         try {
-            this._settings = this.getSettings(SETTINGS_SCHEMA);
-            console.log(`${LOG_PREFIX} enable: settings loaded: ${SETTINGS_SCHEMA}`);
+            this._settings = this.getSettings();
+            console.log(`${LOG_PREFIX} enable: settings loaded from metadata settings-schema`);
 
             Main.wm.addKeybinding(
                 KEYBINDING_RESIZE_LEFT,
