@@ -32,7 +32,8 @@ export default class UbuntuWaylandSizerExtension extends Extension {
             this._settings = this.getSettings();
             this._registeredKeybindings = [];
             this._pendingTimeoutIds = [];
-            console.log(`${LOG_PREFIX} enable: settings loaded from metadata settings-schema`);
+            this._debugLogging = this._readDebugLogging();
+            this._debugLog(`enable: settings loaded from metadata settings-schema; debug-logging=${this._debugLogging}`);
 
             for (const [keybindingName, presetName] of KEYBINDINGS) {
                 Main.wm.addKeybinding(
@@ -44,7 +45,7 @@ export default class UbuntuWaylandSizerExtension extends Extension {
                 );
 
                 this._registeredKeybindings.push(keybindingName);
-                console.log(`${LOG_PREFIX} enable: keybinding registered: ${keybindingName} -> ${presetName}`);
+                this._debugLog(`enable: keybinding registered: ${keybindingName} -> ${presetName}`);
             }
 
             console.log(`${LOG_PREFIX} enabled`);
@@ -76,7 +77,7 @@ export default class UbuntuWaylandSizerExtension extends Extension {
             for (const keybindingName of this._registeredKeybindings) {
                 try {
                     Main.wm.removeKeybinding(keybindingName);
-                    console.log(`${LOG_PREFIX} cleanup: keybinding removed: ${keybindingName}`);
+                    this._debugLog(`cleanup: keybinding removed: ${keybindingName}`);
                 } catch (error) {
                     console.error(`${LOG_PREFIX} cleanup: failed to remove keybinding ${keybindingName}: ${this._formatError(error)}`);
                 }
@@ -85,21 +86,22 @@ export default class UbuntuWaylandSizerExtension extends Extension {
 
         this._pendingTimeoutIds = [];
         this._registeredKeybindings = [];
+        this._debugLogging = true;
         this._settings = null;
     }
 
     _applyPresetToFocusedWindow(presetName) {
-        console.log(`${LOG_PREFIX} action: preset triggered: ${presetName}`);
+        this._debugLog(`action: preset triggered: ${presetName}`);
 
         const window = global.display.get_focus_window();
 
         if (!window) {
-            console.log(`${LOG_PREFIX} action: no focused window`);
+            this._debugLog('action: no focused window');
             return;
         }
 
         if (window.window_type !== Meta.WindowType.NORMAL) {
-            console.log(`${LOG_PREFIX} action: ignored non-normal window`);
+            this._debugLog('action: ignored non-normal window');
             return;
         }
 
@@ -114,8 +116,8 @@ export default class UbuntuWaylandSizerExtension extends Extension {
     }
 
     _breakOutFromFullWorkarea(window, presetName, context) {
-        console.log(
-            `${LOG_PREFIX} action: full-workarea state detected; ` +
+        this._debugLog(
+            `action: full-workarea state detected; ` +
             `breaking out before preset ${presetName}: ` +
             `monitor=${context.monitorIndex}, ` +
             `workarea=${context.workArea.x},${context.workArea.y} ${context.workArea.width}x${context.workArea.height}, ` +
@@ -131,8 +133,8 @@ export default class UbuntuWaylandSizerExtension extends Extension {
             window.move_frame(true, safeRect.x, safeRect.y);
             window.move_resize_frame(true, safeRect.x, safeRect.y, safeRect.width, safeRect.height);
 
-            console.log(
-                `${LOG_PREFIX} action: applied safe restore before preset ${presetName}: ` +
+            this._debugLog(
+                `action: applied safe restore before preset ${presetName}: ` +
                 `${safeRect.x},${safeRect.y} ${safeRect.width}x${safeRect.height}`
             );
         } catch (error) {
@@ -148,15 +150,15 @@ export default class UbuntuWaylandSizerExtension extends Extension {
         const context = this._getWindowContext(window);
         const target = this._calculatePresetGeometry(presetName, context.workArea, context.frameRect);
 
-        console.log(
-            `${LOG_PREFIX} action: geometry context (${reason}): ` +
+        this._debugLog(
+            `action: geometry context (${reason}): ` +
             `monitor=${context.monitorIndex}, ` +
             `workarea=${context.workArea.x},${context.workArea.y} ${context.workArea.width}x${context.workArea.height}, ` +
             `frame=${context.frameRect.x},${context.frameRect.y} ${context.frameRect.width}x${context.frameRect.height}`
         );
 
         if (!target) {
-            console.log(`${LOG_PREFIX} action: unknown preset: ${presetName}`);
+            this._debugLog(`action: unknown preset: ${presetName}`);
             return;
         }
 
@@ -173,8 +175,8 @@ export default class UbuntuWaylandSizerExtension extends Extension {
             window.move_frame(true, target.x, target.y);
             window.move_resize_frame(true, target.x, target.y, target.width, target.height);
 
-            console.log(
-                `${LOG_PREFIX} action: applied preset ${presetName}: ` +
+            this._debugLog(
+                `action: applied preset ${presetName}: ` +
                 `${target.x},${target.y} ${target.width}x${target.height}`
             );
 
@@ -225,8 +227,8 @@ export default class UbuntuWaylandSizerExtension extends Extension {
             const actualFrame = window.get_frame_rect();
 
             if (this._isFrameNearlyEqualToWorkArea(actualFrame, workArea) && !this._isFrameNearlySameGeometry(actualFrame, requestedTarget)) {
-                console.log(
-                    `${LOG_PREFIX} action: resize rejected for ${presetName}; retrying requested target ` +
+                this._debugLog(
+                    `action: resize rejected for ${presetName}; retrying requested target ` +
                     `(attempt=${attempt}): actual=${actualFrame.x},${actualFrame.y} ${actualFrame.width}x${actualFrame.height}, ` +
                     `requested=${requestedTarget.x},${requestedTarget.y} ${requestedTarget.width}x${requestedTarget.height}`
                 );
@@ -253,8 +255,8 @@ export default class UbuntuWaylandSizerExtension extends Extension {
                 return;
 
             if (this._isNearlySameFrame(actualFrame, correctedTarget)) {
-                console.log(
-                    `${LOG_PREFIX} action: post-correction not needed for ${presetName}: ` +
+                this._debugLog(
+                    `action: post-correction not needed for ${presetName}: ` +
                     `actual=${actualFrame.x},${actualFrame.y} ${actualFrame.width}x${actualFrame.height}`
                 );
                 return;
@@ -269,8 +271,8 @@ export default class UbuntuWaylandSizerExtension extends Extension {
                 correctedTarget.height
             );
 
-            console.log(
-                `${LOG_PREFIX} action: post-corrected preset ${presetName}: ` +
+            this._debugLog(
+                `action: post-corrected preset ${presetName}: ` +
                 `actual=${actualFrame.x},${actualFrame.y} ${actualFrame.width}x${actualFrame.height}, ` +
                 `corrected=${correctedTarget.x},${correctedTarget.y} ${correctedTarget.width}x${correctedTarget.height}`
             );
@@ -458,6 +460,22 @@ export default class UbuntuWaylandSizerExtension extends Extension {
             Number.isFinite(geometry.height) &&
             geometry.width > 0 &&
             geometry.height > 0;
+    }
+
+    _readDebugLogging() {
+        try {
+            return this._settings?.get_boolean('debug-logging') ?? true;
+        } catch (error) {
+            console.error(`${LOG_PREFIX} failed to read debug-logging setting: ${this._formatError(error)}`);
+            return true;
+        }
+    }
+
+    _debugLog(message) {
+        this._debugLogging = this._readDebugLogging();
+
+        if (this._debugLogging)
+            console.log(`${LOG_PREFIX} ${message}`);
     }
 
     _formatError(error) {
