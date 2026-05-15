@@ -1,0 +1,9 @@
+{
+  "uuid": "ubuntu-wayland-sizer@sawaichi9527",
+  "name": "Ubuntu Wayland Sizer",
+  "description": "Minimal GNOME Shell Extension baseline for Wayland window sizing experiments.",
+  "shell-version": [
+    "50"
+  ],
+  "version": 1
+}
