@@ -37,6 +37,18 @@
       <description>Keyboard shortcut for the fixed 1440x768 large center preset.</description>
     </key>
 
+    <key name="cycle-center-next" type="as">
+      <default><![CDATA[['<Super><Alt>period']]]></default>
+      <summary>Cycle focused window to the next center preset</summary>
+      <description>Keyboard shortcut for cycling forward through the center preset order: compact center, custom center, and large center.</description>
+    </key>
+
+    <key name="cycle-center-previous" type="as">
+      <default><![CDATA[['<Super><Alt>comma']]]></default>
+      <summary>Cycle focused window to the previous center preset</summary>
+      <description>Keyboard shortcut for cycling backward through the center preset order: compact center, custom center, and large center.</description>
+    </key>
+
     <key name="center-width" type="i">
       <default>1280</default>
       <summary>Center preset width</summary>
