@@ -24,5 +24,11 @@
       <summary>Resize focused window to a centered 1280x720 rectangle</summary>
       <description>Keyboard shortcut for the centered fixed-size preset.</description>
     </key>
+
+    <key name="debug-logging" type="b">
+      <default>true</default>
+      <summary>Enable verbose debug logging</summary>
+      <description>When enabled, the extension writes detailed geometry and preset flow logs to the GNOME Shell journal. Disable after validation to reduce journal noise.</description>
+    </key>
   </schema>
 </schemalist>
