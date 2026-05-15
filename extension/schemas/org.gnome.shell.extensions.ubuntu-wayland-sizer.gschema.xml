@@ -4,9 +4,25 @@
     <key name="resize-left" type="as">
       <default><![CDATA[['<Super><Alt>Left']]]></default>
       <summary>Resize focused window to the left half of the current workarea</summary>
-      <description>
-        Keyboard shortcut used by the Phase 2 probe action. The default intentionally uses Super+Alt+Left instead of Ctrl+Alt or a plain Super shortcut to reduce common GNOME and application shortcut conflicts.
-      </description>
+      <description>Keyboard shortcut for the left-half preset.</description>
+    </key>
+
+    <key name="resize-right" type="as">
+      <default><![CDATA[['<Super><Alt>Right']]]></default>
+      <summary>Resize focused window to the right half of the current workarea</summary>
+      <description>Keyboard shortcut for the right-half preset.</description>
+    </key>
+
+    <key name="resize-full" type="as">
+      <default><![CDATA[['<Super><Alt>Up']]]></default>
+      <summary>Resize focused window to the full current workarea</summary>
+      <description>Keyboard shortcut for the full-workarea preset.</description>
+    </key>
+
+    <key name="resize-center" type="as">
+      <default><![CDATA[['<Super><Alt>Down']]]></default>
+      <summary>Resize focused window to a centered 1280x720 rectangle</summary>
+      <description>Keyboard shortcut for the centered fixed-size preset.</description>
     </key>
   </schema>
 </schemalist>
