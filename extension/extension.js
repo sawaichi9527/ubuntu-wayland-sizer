@@ -99,7 +99,9 @@ export default class UbuntuWaylandSizerExtension extends Extension {
         }
 
         try {
-            window.unmaximize(Meta.MaximizeFlags.BOTH);
+            if (window.get_maximized() !== 0) {
+                window.unmaximize();
+            }
 
             window.move_resize_frame(
                 true,
