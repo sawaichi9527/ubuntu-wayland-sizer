@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<schemalist>
+  <schema id="org.gnome.shell.extensions.ubuntu-wayland-sizer" path="/org/gnome/shell/extensions/ubuntu-wayland-sizer/">
+    <key name="resize-left" type="as">
+      <default><![CDATA[['<Super><Alt>Left']]]></default>
+      <summary>Resize focused window to the left half of the current workarea</summary>
+      <description>
+        Keyboard shortcut used by the Phase 2 probe action. The default intentionally uses Super+Alt+Left instead of Ctrl+Alt or a plain Super shortcut to reduce common GNOME and application shortcut conflicts.
+      </description>
+    </key>
+  </schema>
+</schemalist>
