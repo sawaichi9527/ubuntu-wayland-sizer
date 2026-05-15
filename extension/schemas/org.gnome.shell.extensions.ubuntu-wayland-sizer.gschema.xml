@@ -49,6 +49,12 @@
       <description>Keyboard shortcut for cycling backward through the center preset order: compact center, custom center, and large center.</description>
     </key>
 
+    <key name="open-preset-popup" type="as">
+      <default><![CDATA[['<Super><Alt>space']]]></default>
+      <summary>Open the preset popup for the focused window</summary>
+      <description>Keyboard shortcut for opening the Ubuntu Wayland Sizer popup. The popup shows the focused window geometry and lets the user apply built-in presets.</description>
+    </key>
+
     <key name="center-width" type="i">
       <default>1280</default>
       <summary>Center preset width</summary>
