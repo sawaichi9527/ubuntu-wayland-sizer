@@ -25,6 +25,18 @@
       <description>Keyboard shortcut for the centered configurable-size preset.</description>
     </key>
 
+    <key name="resize-center-compact" type="as">
+      <default><![CDATA[['<Super><Alt>J']]]></default>
+      <summary>Resize focused window to a compact centered rectangle</summary>
+      <description>Keyboard shortcut for the fixed 800x600 compact center preset.</description>
+    </key>
+
+    <key name="resize-center-large" type="as">
+      <default><![CDATA[['<Super><Alt>K']]]></default>
+      <summary>Resize focused window to a large centered rectangle</summary>
+      <description>Keyboard shortcut for the fixed 1440x768 large center preset.</description>
+    </key>
+
     <key name="center-width" type="i">
       <default>1280</default>
       <summary>Center preset width</summary>
