@@ -971,6 +971,18 @@ export default class UbuntuWaylandSizerExtension extends Extension {
         }];
     }
 
+    _getMonitorGeometry(monitor, workArea) {
+        const x = Number.parseInt(monitor?.x, 10);
+        const y = Number.parseInt(monitor?.y, 10);
+        const width = Number.parseInt(monitor?.width, 10);
+        const height = Number.parseInt(monitor?.height, 10);
+
+        if ([x, y, width, height].every(Number.isFinite) && width > 0 && height > 0)
+            return { x, y, width, height };
+
+        return { x: workArea.x, y: workArea.y, width: workArea.width, height: workArea.height };
+    }
+
     _getDisplayInfoForMonitor(monitorIndex) {
         return this._getDisplayInfos().find(display => display.monitorIndex === monitorIndex) ?? {
             monitorIndex,
