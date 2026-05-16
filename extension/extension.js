@@ -141,7 +141,7 @@ class DeletePresetDialog extends ModalDialog.ModalDialog {
         this._preset = preset;
         this._buildLayout();
         this.setButtons([
-            { label: 'Cancel', action: () => this.close() },
+            { label: 'Cancel', action: () => this._cancel() },
             { label: 'Delete', action: () => this._delete(), default: true },
         ]);
     }
@@ -153,6 +153,11 @@ class DeletePresetDialog extends ModalDialog.ModalDialog {
         content.add_child(new St.Label({ text: this._extension._formatCustomPresetButtonLabel(this._preset), style: 'font-weight: bold;' }));
         content.add_child(new St.Label({ text: 'This cannot be undone.', style: 'color: #ffb86c;' }));
         this.contentLayout.add_child(content);
+    }
+
+    _cancel() {
+        this.close();
+        this._extension._reopenPresetPopupAfterDeleteDecision('cancel');
     }
 
     _delete() {
@@ -195,7 +200,7 @@ class PresetPopupDialog extends ModalDialog.ModalDialog {
             content.add_child(this._buildCustomPresetGroup(customPresets));
 
         content.add_child(this._buildActionsSection());
-        scrollView.add_actor(content);
+        scrollView.add_child(content);
         outer.add_child(scrollView);
         this.contentLayout.add_child(outer);
     }
@@ -435,17 +440,17 @@ export default class UbuntuWaylandSizerExtension extends Extension {
         }
     }
 
-    _reopenPresetPopupAfterDelete() {
+    _reopenPresetPopupAfterDeleteDecision(reason) {
         this._scheduleTimeout(POPUP_REOPEN_DELAY_MS, () => {
             const window = this._isNormalWindow(this._lastPopupWindow) ? this._lastPopupWindow : global.display.get_focus_window();
 
             if (!this._isNormalWindow(window)) {
-                this._debugLog('popup: delete auto-refresh skipped because no normal target window exists');
+                this._debugLog(`popup: delete ${reason} refresh skipped because no normal target window exists`);
                 return;
             }
 
-            this._debugLog('popup: reopening after saved preset delete');
-            this._showPresetPopupForWindow(window, 'delete-refresh');
+            this._debugLog(`popup: reopening after saved preset delete ${reason}`);
+            this._showPresetPopupForWindow(window, `delete-${reason}-refresh`);
         });
     }
 
@@ -549,7 +554,7 @@ export default class UbuntuWaylandSizerExtension extends Extension {
         this._debugLog(`custom-preset: deleted preset id=${targetPreset.id}, name=${targetPreset.name}`);
 
         if (options.reopenPopup)
-            this._reopenPresetPopupAfterDelete();
+            this._reopenPresetPopupAfterDeleteDecision('confirm');
 
         return true;
     }
