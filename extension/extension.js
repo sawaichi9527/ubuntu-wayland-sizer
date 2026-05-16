@@ -92,7 +92,7 @@ const POPUP_KEYBINDINGS = Object.freeze(['open-preset-popup']);
 
 const POPUP_PRESET_GROUPS = Object.freeze([
     Object.freeze({ title: 'Center Presets', presets: CENTER_CYCLE_PRESETS }),
-    Object.freeze({ title: 'Window Positions', presets: Object.freeze([PRESETS.LEFT, PRESETS.RIGHT, PRESETS.FULL]) }),
+    Object.freeze({ title: 'Position Presets', presets: Object.freeze([PRESETS.LEFT, PRESETS.RIGHT, PRESETS.FULL]) }),
 ]);
 
 const SavePresetDialog = GObject.registerClass(
@@ -196,7 +196,7 @@ class PresetPopupDialog extends ModalDialog.ModalDialog {
     _buildLayout() {
         const outer = new St.BoxLayout({ vertical: true, style: 'spacing: 10px; min-width: 700px;' });
         outer.add_child(new St.Label({
-            text: 'Ubuntu Wayland Sizer',
+            text: this._extension._getPopupTitle(),
             x_align: Clutter.ActorAlign.CENTER,
             style: 'font-size: 20px; font-weight: bold; text-align: center;',
         }));
@@ -440,6 +440,23 @@ export default class UbuntuWaylandSizerExtension extends Extension {
         this._normalLog('disable: start');
         this._cleanup();
         this._normalLog('disabled');
+    }
+
+    _getExtensionVersionLabel() {
+        const version = this.metadata?.version;
+
+        if (version === undefined || version === null)
+            return '';
+
+        const versionText = String(version).trim();
+        return versionText ? `v${versionText}.0` : '';
+    }
+
+    _getPopupTitle() {
+        const versionLabel = this._getExtensionVersionLabel();
+        return versionLabel
+            ? `Ubuntu Wayland Sizer · ${versionLabel}`
+            : 'Ubuntu Wayland Sizer';
     }
 
     _cleanup() {
