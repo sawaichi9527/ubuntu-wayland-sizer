@@ -37,8 +37,11 @@ const PRESETS = Object.freeze({
     RIGHT: 'right',
     FULL: 'full',
     CENTER: 'center',
+    CENTER_TINY: 'center-tiny',
     CENTER_COMPACT: 'center-compact',
+    CENTER_MEDIUM: 'center-medium',
     CENTER_LARGE: 'center-large',
+    CENTER_ULTRAWIDE: 'center-ultrawide',
 });
 
 const PRESET_TYPES = Object.freeze({
@@ -53,12 +56,22 @@ const PRESET_DEFINITIONS = Object.freeze({
     [PRESETS.LEFT]: Object.freeze({ id: PRESETS.LEFT, type: PRESET_TYPES.LEFT_HALF, label: 'Left half' }),
     [PRESETS.RIGHT]: Object.freeze({ id: PRESETS.RIGHT, type: PRESET_TYPES.RIGHT_HALF, label: 'Right half' }),
     [PRESETS.FULL]: Object.freeze({ id: PRESETS.FULL, type: PRESET_TYPES.FULL_WORKAREA, label: 'Full workarea' }),
-    [PRESETS.CENTER]: Object.freeze({ id: PRESETS.CENTER, type: PRESET_TYPES.CUSTOM_CENTER, label: 'Custom center' }),
-    [PRESETS.CENTER_COMPACT]: Object.freeze({ id: PRESETS.CENTER_COMPACT, type: PRESET_TYPES.FIXED_CENTER, label: 'Compact center', size: Object.freeze({ width: 800, height: 600 }) }),
-    [PRESETS.CENTER_LARGE]: Object.freeze({ id: PRESETS.CENTER_LARGE, type: PRESET_TYPES.FIXED_CENTER, label: 'Large center', size: Object.freeze({ width: 1440, height: 768 }) }),
+    [PRESETS.CENTER]: Object.freeze({ id: PRESETS.CENTER, type: PRESET_TYPES.CUSTOM_CENTER, label: 'Center' }),
+    [PRESETS.CENTER_TINY]: Object.freeze({ id: PRESETS.CENTER_TINY, type: PRESET_TYPES.FIXED_CENTER, label: 'Tiny Center', size: Object.freeze({ width: 640, height: 480 }) }),
+    [PRESETS.CENTER_COMPACT]: Object.freeze({ id: PRESETS.CENTER_COMPACT, type: PRESET_TYPES.FIXED_CENTER, label: 'Compact Center', size: Object.freeze({ width: 800, height: 600 }) }),
+    [PRESETS.CENTER_MEDIUM]: Object.freeze({ id: PRESETS.CENTER_MEDIUM, type: PRESET_TYPES.FIXED_CENTER, label: 'Medium Center', size: Object.freeze({ width: 1024, height: 768 }) }),
+    [PRESETS.CENTER_LARGE]: Object.freeze({ id: PRESETS.CENTER_LARGE, type: PRESET_TYPES.FIXED_CENTER, label: 'Large Center', size: Object.freeze({ width: 1440, height: 768 }) }),
+    [PRESETS.CENTER_ULTRAWIDE]: Object.freeze({ id: PRESETS.CENTER_ULTRAWIDE, type: PRESET_TYPES.FIXED_CENTER, label: 'Ultra-wide Center', size: Object.freeze({ width: 1600, height: 900 }) }),
 });
 
-const CENTER_CYCLE_PRESETS = Object.freeze([PRESETS.CENTER_COMPACT, PRESETS.CENTER, PRESETS.CENTER_LARGE]);
+const CENTER_CYCLE_PRESETS = Object.freeze([
+    PRESETS.CENTER_TINY,
+    PRESETS.CENTER_COMPACT,
+    PRESETS.CENTER_MEDIUM,
+    PRESETS.CENTER,
+    PRESETS.CENTER_LARGE,
+    PRESETS.CENTER_ULTRAWIDE,
+]);
 const CYCLE_DIRECTIONS = Object.freeze({ NEXT: 1, PREVIOUS: -1 });
 
 const PRESET_KEYBINDINGS = Object.freeze([
@@ -78,7 +91,7 @@ const CYCLE_KEYBINDINGS = Object.freeze([
 const POPUP_KEYBINDINGS = Object.freeze(['open-preset-popup']);
 
 const POPUP_PRESET_GROUPS = Object.freeze([
-    Object.freeze({ title: 'Center Presets', presets: Object.freeze([PRESETS.CENTER_COMPACT, PRESETS.CENTER, PRESETS.CENTER_LARGE]) }),
+    Object.freeze({ title: 'Center Presets', presets: CENTER_CYCLE_PRESETS }),
     Object.freeze({ title: 'Window Positions', presets: Object.freeze([PRESETS.LEFT, PRESETS.RIGHT, PRESETS.FULL]) }),
 ]);
 
@@ -912,9 +925,7 @@ export default class UbuntuWaylandSizerExtension extends Extension {
             PRESETS.LEFT,
             PRESETS.RIGHT,
             PRESETS.FULL,
-            PRESETS.CENTER_COMPACT,
-            PRESETS.CENTER,
-            PRESETS.CENTER_LARGE,
+            ...CENTER_CYCLE_PRESETS,
         ];
 
         for (const presetName of orderedPresetNames) {
@@ -1262,7 +1273,9 @@ export default class UbuntuWaylandSizerExtension extends Extension {
     }
 
     _schedulePostResizeCorrection(window, presetName, workArea, target) {
-        if (![PRESETS.LEFT, PRESETS.RIGHT, PRESETS.CENTER, PRESETS.CENTER_COMPACT, PRESETS.CENTER_LARGE].includes(presetName))
+        const correctionTypes = [PRESET_TYPES.LEFT_HALF, PRESET_TYPES.RIGHT_HALF, PRESET_TYPES.CUSTOM_CENTER, PRESET_TYPES.FIXED_CENTER];
+        const definition = PRESET_DEFINITIONS[presetName];
+        if (!correctionTypes.includes(definition?.type))
             return;
 
         this._scheduleTimeout(POST_RESIZE_CORRECTION_DELAY_MS, () => {
@@ -1490,7 +1503,7 @@ export default class UbuntuWaylandSizerExtension extends Extension {
     }
 
     _criticalLog(message) {
-        this._log(LOG_LEVELS.CRITICAL, message);
+        this._log(LOG_LEVELS.CRITICAL);
     }
 
     _debugLog(message) {
