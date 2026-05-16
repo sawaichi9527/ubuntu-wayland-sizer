@@ -91,17 +91,17 @@ wayland
 
 ## Screenshots
 
-Screenshots and release images are planned for the Phase 7.6 release-packaging track.
+### Popup Overview
 
-Planned screenshots:
+Main popup with:
 
-```text
-- popup preset selector
 - Center Presets
 - Position Presets
 - Saved Presets
-- Extension Manager entry
-```
+- runtime actions
+- popup version visibility
+
+![Ubuntu Wayland Sizer popup overview](assets/screenshots/popup-overview.png)
 
 ## Default Shortcuts
 
