@@ -1090,7 +1090,7 @@ export default class UbuntuWaylandSizerExtension extends Extension {
             window.move_resize_frame(true, target.x, target.y, target.width, target.height);
             this._rememberCenterCyclePreset(presetName);
             this._debugLog(`action: applied preset ${presetName}: ${target.x},${target.y} ${target.width}x${target.height}`);
-            this._showPresetFeedbackOverlay(presetName, target);
+            this._showPresetFeedbackOverlay(presetName, target, context.workArea);
             this._schedulePostResizeCorrection(window, presetName, context.workArea, target);
         } catch (error) {
             console.error(`${LOG_PREFIX} action: move_resize_frame failed for ${presetName}: ${this._formatError(error)}`);
@@ -1105,7 +1105,7 @@ export default class UbuntuWaylandSizerExtension extends Extension {
         return { monitorIndex, workspace, workArea, frameRect };
     }
 
-    _showPresetFeedbackOverlay(presetName, target) {
+    _showPresetFeedbackOverlay(presetName, target, workArea) {
         const definition = PRESET_DEFINITIONS[presetName];
         if (!definition || !target)
             return;
@@ -1116,7 +1116,7 @@ export default class UbuntuWaylandSizerExtension extends Extension {
 
         this._presetFeedbackTitleLabel.set_text(definition.label ?? presetName);
         this._presetFeedbackSizeLabel.set_text(`${target.width} × ${target.height}`);
-        this._positionPresetFeedbackOverlay(overlay);
+        this._positionPresetFeedbackOverlay(overlay, workArea);
         overlay.opacity = 255;
         overlay.show();
         this._resetPresetFeedbackTimeout();
@@ -1156,15 +1156,15 @@ export default class UbuntuWaylandSizerExtension extends Extension {
         }
     }
 
-    _positionPresetFeedbackOverlay(overlay) {
+    _positionPresetFeedbackOverlay(overlay, workArea) {
         try {
-            const monitor = Main.layoutManager?.primaryMonitor ?? { x: 0, y: 0, width: global.stage.width, height: global.stage.height };
+            const area = workArea ?? Main.layoutManager?.primaryMonitor ?? { x: 0, y: 0, width: global.stage.width, height: global.stage.height };
             const [, naturalWidth] = overlay.get_preferred_width(-1);
             const [, naturalHeight] = overlay.get_preferred_height(-1);
             const width = Math.max(220, naturalWidth);
             const height = Math.max(56, naturalHeight);
-            const x = monitor.x + Math.floor((monitor.width - width) / 2);
-            const y = monitor.y + Math.floor((monitor.height - height) * 0.22);
+            const x = area.x + Math.floor((area.width - width) / 2);
+            const y = area.y + Math.floor((area.height - height) * 0.22);
             overlay.set_position(x, y);
         } catch (error) {
             this._debugLog(`feedback: failed to position preset overlay: ${this._formatError(error)}`);
