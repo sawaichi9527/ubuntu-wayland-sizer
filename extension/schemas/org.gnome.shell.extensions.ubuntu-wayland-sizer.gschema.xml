@@ -67,6 +67,12 @@
       <description>Preferred height for the center preset before workarea clamping is applied.</description>
     </key>
 
+    <key name="custom-presets-json" type="s">
+      <default>'{"version":1,"presets":[]}'</default>
+      <summary>Custom saved presets JSON</summary>
+      <description>JSON storage for user-saved workarea-relative geometry presets. Invalid entries are ignored by the extension.</description>
+    </key>
+
     <key name="debug-logging" type="b">
       <default>true</default>
       <summary>Enable verbose debug logging</summary>
