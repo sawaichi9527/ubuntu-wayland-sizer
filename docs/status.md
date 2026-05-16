@@ -2,21 +2,28 @@
 
 ## Current Milestone
 
-Phase 7.3 is functionally complete through popup runtime controls.
+Phase 7.4a preset library expansion is the current functional baseline.
+
+Phase 7.5 is a release-readiness and polish track based on the Phase 7.4a baseline.
+
+Phase 7.5a focuses on roadmap cleanup and protected-core guardrails. It intentionally does not change runtime behavior.
 
 The current baseline includes:
 
 - built-in preset resizing
-- configurable center size
-- center preset cycling
+- expanded Center Presets library
+- metadata-driven center preset cycling
 - popup preset selection
 - custom saved presets
 - save/delete popup flows
 - built-in preset feedback overlay
 - structured GNOME Shell journal logging
 - popup runtime debug-log toggle
-
-Phase 7.3e is a cleanup/documentation phase before starting Phase 7.4.
+- workarea-based geometry
+- multi-monitor and mixed-scaling behavior
+- full-workarea / maximized-like breakout before resizing
+- safe restore before applying target presets
+- post-resize correction for constrained app behavior
 
 ## Validation Environment
 
@@ -44,7 +51,7 @@ Phase 7.3e is a cleanup/documentation phase before starting Phase 7.4.
 - Mixed-scaling logical workarea geometry is usable.
 - Electron minimum-width constrained windows can be edge-corrected after resize.
 - Full-workarea/maximized-like windows can be broken out before applying left/right/center presets.
-- Center preset cycling works across Compact, Custom, and Large center presets.
+- Center preset cycling works across the expanded Phase 7.4a Center Presets library.
 - Popup preset selection works for built-in and saved custom presets.
 - Saved custom presets can be created, persisted, applied, and deleted.
 - Popup save/delete secondary dialogs return to the popup after non-terminal decisions.
@@ -54,19 +61,75 @@ Phase 7.3e is a cleanup/documentation phase before starting Phase 7.4.
 - DEBUG logs are gated by the `debug-logging` setting.
 - Popup runtime controls can switch between Normal and Debug logging modes without restarting the extension.
 
+## Phase 7.4a Center Presets Baseline
+
+Phase 7.4a standard Center Presets:
+
+```text
+Tiny Center         -> 640x480
+Compact Center      -> 800x600
+Medium Center       -> 1024x768
+Wide-medium Center  -> 1152x864
+Large Center        -> 1280x960
+Ultra-wide Center   -> 1600x900
+```
+
+Center cycling is limited to the Center Presets group and wraps in both directions.
+
+Position presets remain separate from center cycling:
+
+```text
+Left half
+Right half
+Full workarea
+```
+
+Saved Presets remain user-saved relative geometry presets and are not part of center cycling.
+
 ## Confirmed Presets and Shortcuts
 
 ```text
 Super + Alt + H      -> Left half
 Super + Alt + L      -> Right half
 Super + Alt + F      -> Full workarea
-Super + Alt + C      -> Custom center
+Super + Alt + C      -> Wide-medium Center
+Super + Alt + J      -> Compact Center
+Super + Alt + K      -> Large Center
 Super + Alt + .      -> Cycle center next
 Super + Alt + ,      -> Cycle center previous
 Super + Alt + Space  -> Open preset popup
 ```
 
-Arrow-key defaults were removed because Ubuntu/GNOME may intercept `Super + Alt + Arrow` combinations for window switching or window-management behavior.
+Arrow-key defaults are intentionally avoided because Ubuntu/GNOME may intercept `Super + Alt + Arrow` combinations for built-in window-management behavior.
+
+## Protected Core Guardrails
+
+The following areas are compatibility-critical for GNOME Shell 50 + Wayland + Mutter and should not be removed, simplified, or refactored without equivalent validation:
+
+- workarea-based geometry instead of raw monitor geometry
+- focused-window monitor resolution
+- multi-monitor and mixed-scaling geometry handling
+- portrait-right monitor support
+- full-workarea / maximized-like detection
+- safe restore before resizing from full-workarea/maximized-like states
+- delayed resize after Mutter state transition
+- post-resize readback and correction
+- Electron / minimum-width constrained app edge correction
+- Mutter / Wayland move/resize ordering assumptions
+
+These workarounds are not cosmetic. They are part of the core reason the extension can provide Sizer-like behavior under Wayland and Mutter constraints.
+
+See:
+
+```text
+docs/phase-7-5a-roadmap-and-guardrails.md
+```
+
+## Panel Indicator Decision
+
+Panel indicator support is deferred and is not part of Phase 7.5.
+
+The extension state can be checked through GNOME Extensions / Extension Manager, so a Shell panel indicator would add extra UI lifecycle and compatibility risk without being necessary for the release-readiness baseline.
 
 ## Confirmed Applications
 
@@ -80,38 +143,6 @@ The following applications have been tested successfully on both the primary mon
 - UpNote .deb
 
 The 100% + 150% mixed-scaling smoke test passed across the primary and secondary monitor for the current core test set.
-
-## Confirmed Geometry Examples
-
-Primary monitor workarea example:
-
-```text
-monitor=0, workarea=67,32 1853x1168
-left   -> 67,32 926x1168
-right  -> 993,32 927x1168
-full   -> 67,32 1853x1168
-center -> 353,256 1280x720
-```
-
-Secondary portrait-right monitor workarea examples:
-
-```text
-100% scale:
-monitor=1, workarea=1920,0 1080x1920
-left   -> 1920,0 540x1920
-right  -> 2460,0 540x1920
-full   -> 1920,0 1080x1920
-center -> 1920,600 1080x720
-```
-
-```text
-Mixed scaling example:
-monitor=1, workarea=1920,0 720x1280
-left   -> 1920,0 360x1280
-right  -> 2280,0 360x1280
-full   -> 1920,0 720x1280
-center -> 1920,280 720x720
-```
 
 ## Full-workarea Breakout Validation
 
@@ -127,7 +158,7 @@ Expected successful flow:
 [ubuntu-wayland-sizer][DEBUG] action: post-correction not needed for left
 ```
 
-This has been validated on both primary and secondary monitor paths in mixed-scaling tests.
+This behavior is protected core.
 
 ## Minimum-width Constrained App Behavior
 
@@ -144,6 +175,8 @@ corrected right position: workarea.right - 600
 ```
 
 This means constrained apps may not visually occupy exactly 50% of a narrow portrait monitor, but they are aligned correctly within the available workarea.
+
+This behavior is protected core.
 
 ## Structured Logging Baseline
 
@@ -176,13 +209,6 @@ Popup runtime controls can switch:
 ```text
 Log: Debug  -> Switch to Normal
 Log: Normal -> Switch to Debug
-```
-
-Observed runtime toggle events:
-
-```text
-[ubuntu-wayland-sizer][NORMAL] logging mode changed: DEBUG disabled (popup control)
-[ubuntu-wayland-sizer][NORMAL] logging mode changed: DEBUG enabled (popup control)
 ```
 
 ## Popup Runtime Controls Baseline
@@ -275,18 +301,21 @@ Phase 7.2f popup/custom-preset usability: PASS
 Phase 7.3 preset cycling and popup selection baseline: COMPLETE
 Phase 7.3c structured logging backend: COMPLETE
 Phase 7.3d popup runtime controls: COMPLETE
-Phase 7.3e roadmap cleanup: IN PROGRESS
+Phase 7.3e roadmap cleanup: COMPLETE
+Phase 7.4a preset library expansion: PASS / CURRENT BASELINE
+Phase 7.5a roadmap and guardrails: IN PROGRESS
 ```
 
 ## Next Recommended Step
 
-Finish Phase 7.3e cleanup, then move to Phase 7.4.
+Finish Phase 7.5a by reviewing the guardrail documentation, then continue with Phase 7.5b version visibility.
 
-Recommended Phase 7.4 scope:
+Recommended Phase 7.5 sequence:
 
-- preset library expansion
-- popup grouping/polish for larger preset sets
-- optional preset cycling refinements
-- keep runtime controls lightweight
+- 7.5a roadmap and guardrail docs
+- 7.5b version visibility
+- 7.5c deployment docs
+- 7.5d UX wording polish
+- 7.5e i18n-ready note only
 
-Do not add D-Bus, GTK4 settings UI, or a background service until the extension-only behavior remains stable across the Phase 7 popup/runtime-control baseline.
+Do not add D-Bus, GTK4 settings UI, a background service, or panel indicator during Phase 7.5.
