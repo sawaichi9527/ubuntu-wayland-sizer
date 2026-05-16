@@ -1,3 +1,4 @@
+import Clutter from 'gi://Clutter';
 import GLib from 'gi://GLib';
 import GObject from 'gi://GObject';
 import Meta from 'gi://Meta';
@@ -174,7 +175,11 @@ class PresetPopupDialog extends ModalDialog.ModalDialog {
 
     _buildLayout() {
         const outer = new St.BoxLayout({ vertical: true, style: 'spacing: 10px; min-width: 700px;' });
-        outer.add_child(new St.Label({ text: 'Ubuntu Wayland Sizer', style: 'font-size: 20px; font-weight: bold;' }));
+        outer.add_child(new St.Label({
+            text: 'Ubuntu Wayland Sizer',
+            x_align: Clutter.ActorAlign.CENTER,
+            style: 'font-size: 20px; font-weight: bold; text-align: center;',
+        }));
 
         const scrollView = new St.ScrollView({
             style: `max-height: ${POPUP_SCROLL_MAX_HEIGHT}px;`,
@@ -204,8 +209,10 @@ class PresetPopupDialog extends ModalDialog.ModalDialog {
         const { monitorIndex, workArea, frameRect } = this._context;
         const relativeX = frameRect.x - workArea.x;
         const relativeY = frameRect.y - workArea.y;
+        const currentPresetLabel = this._extension._getCurrentPresetLabel(this._context);
         const box = new St.BoxLayout({ vertical: true, style: 'spacing: 2px; padding: 8px 10px; border-radius: 8px; background-color: rgba(255,255,255,0.08);' });
         box.add_child(new St.Label({ text: 'Focused Window', style: 'font-weight: bold;' }));
+        box.add_child(new St.Label({ text: `Current preset: ${currentPresetLabel}`, style: 'color: #3584e4; font-weight: bold;' }));
         box.add_child(new St.Label({ text: `Display ${monitorIndex + 1} · ${frameRect.width}x${frameRect.height} · frame ${frameRect.x},${frameRect.y}` }));
         box.add_child(new St.Label({ text: `Workarea ${workArea.x},${workArea.y} ${workArea.width}x${workArea.height} · relative ${relativeX},${relativeY}` }));
         return box;
@@ -843,6 +850,25 @@ export default class UbuntuWaylandSizerExtension extends Extension {
             monitorIndex: preset.originMonitorIndex,
             available: false,
         };
+    }
+
+    _getCurrentPresetLabel(context) {
+        const orderedPresetNames = [
+            PRESETS.LEFT,
+            PRESETS.RIGHT,
+            PRESETS.FULL,
+            PRESETS.CENTER_COMPACT,
+            PRESETS.CENTER,
+            PRESETS.CENTER_LARGE,
+        ];
+
+        for (const presetName of orderedPresetNames) {
+            const target = this._calculatePresetGeometry(presetName, context.workArea);
+            if (target && this._isFrameNearlySameGeometry(context.frameRect, target))
+                return PRESET_DEFINITIONS[presetName]?.label ?? presetName;
+        }
+
+        return 'Custom / Manual size';
     }
 
     _getDisplayInfos() {
