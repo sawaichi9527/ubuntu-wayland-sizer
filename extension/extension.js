@@ -196,7 +196,7 @@ class PresetPopupDialog extends ModalDialog.ModalDialog {
         });
         const content = new St.BoxLayout({ vertical: true, style: 'spacing: 8px; min-width: 680px; padding-right: 6px;' });
 
-        content.add_child(this._buildGeometrySection());
+        content.add_child(this._buildTopInfoRow());
         content.add_child(this._buildCurrentDisplaysSection());
 
         for (const group of POPUP_PRESET_GROUPS)
@@ -210,6 +210,45 @@ class PresetPopupDialog extends ModalDialog.ModalDialog {
         scrollView.add_child(content);
         outer.add_child(scrollView);
         this.contentLayout.add_child(outer);
+    }
+
+    _buildTopInfoRow() {
+        const row = new St.BoxLayout({ vertical: false, style: 'spacing: 10px;' });
+        const focusedWindowBox = this._buildGeometrySection();
+        const runtimeControlsBox = this._buildRuntimeControlsSection();
+
+        focusedWindowBox.x_expand = true;
+        runtimeControlsBox.x_align = Clutter.ActorAlign.END;
+
+        row.add_child(focusedWindowBox);
+        row.add_child(runtimeControlsBox);
+        return row;
+    }
+
+    _buildRuntimeControlsSection() {
+        const debugEnabled = this._extension._readDebugLogging();
+        const box = new St.BoxLayout({ vertical: true, style: 'spacing: 6px; padding: 8px 10px; border-radius: 8px; background-color: rgba(255,255,255,0.06); min-width: 170px;' });
+
+        box.add_child(new St.Label({
+            text: `Log: ${debugEnabled ? 'Debug' : 'Normal'}`,
+            x_align: Clutter.ActorAlign.CENTER,
+            style: 'font-weight: bold;',
+        }));
+
+        const button = new St.Button({
+            label: debugEnabled ? 'Switch to Normal' : 'Switch to Debug',
+            can_focus: true,
+            style: 'padding: 5px 10px; border-radius: 6px; background-color: rgba(255,255,255,0.10);',
+        });
+
+        button.connect('clicked', () => {
+            this.close();
+            this._extension._toggleDebugLoggingFromPopup();
+            this._extension._reopenPresetPopupAfterDialogDecision('logging', 'toggle');
+        });
+
+        box.add_child(button);
+        return box;
     }
 
     _buildGeometrySection() {
@@ -1415,6 +1454,13 @@ export default class UbuntuWaylandSizerExtension extends Extension {
             this._criticalLog(`failed to read center size settings: ${this._formatError(error)}`);
             return { width: DEFAULT_CENTER_WIDTH, height: DEFAULT_CENTER_HEIGHT };
         }
+    }
+
+    _toggleDebugLoggingFromPopup() {
+        const nextValue = !this._readDebugLogging();
+        this._settings?.set_boolean('debug-logging', nextValue);
+        this._debugLogging = nextValue;
+        this._normalLog(`logging mode changed: DEBUG ${nextValue ? 'enabled' : 'disabled'} (popup control)`);
     }
 
     _readDebugLogging() {

@@ -518,3 +518,63 @@ Observed after deploy, schema compile, and logout/login:
 [ubuntu-wayland-sizer][DEBUG] enable: settings loaded from metadata settings-schema; debug-logging=true
 [ubuntu-wayland-sizer][DEBUG] enable: keybinding registered: resize-left -> left
 [ubuntu-wayland-sizer][NORMAL] enabled
+```
+
+Confirmed deployed extension contains:
+
+```text
+LOG_LEVELS
+${LOG_PREFIX}[${level}] ${message}
+```
+
+Note:
+
+GNOME may log this for the local development UUID:
+
+```text
+Error while downloading update for extension ubuntu-wayland-sizer@sawaichi9527: (Unexpected response: Not Found)
+```
+
+This is non-blocking and only indicates that extensions.gnome.org has no matching published extension package for the local development UUID.
+
+Phase 7.3c logging backend: PASS
+
+---
+
+## Phase 7.3d Popup Runtime Controls Validation
+
+Result: PASS
+
+Implemented popup runtime log mode control.
+
+Layout:
+
+```text
+Popup title: Ubuntu Wayland Sizer
+
+Focused Window section                       Log control section
+Current Displays section
+Preset sections
+Saved Presets
+Actions
+```
+
+Validated behavior:
+
+```text
+- Popup shows current log mode.
+- Switch to Normal sets debug-logging=false.
+- Switch to Debug sets debug-logging=true.
+- Mode switching does not require extension restart.
+- Popup refreshes after switching.
+- NORMAL mode-change events remain visible when DEBUG is disabled.
+```
+
+Observed journal output:
+
+```text
+[ubuntu-wayland-sizer][NORMAL] logging mode changed: DEBUG disabled (popup control)
+[ubuntu-wayland-sizer][NORMAL] logging mode changed: DEBUG enabled (popup control)
+```
+
+Phase 7.3d popup runtime controls: PASS
