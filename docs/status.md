@@ -304,11 +304,12 @@ Phase 7.3d popup runtime controls: COMPLETE
 Phase 7.3e roadmap cleanup: COMPLETE
 Phase 7.4a preset library expansion: PASS / CURRENT BASELINE
 Phase 7.5a roadmap and guardrails: PASS
+Phase 7.5b version visibility: PASS
 ```
 
 ## Next Recommended Step
 
-Continue with Phase 7.5b version visibility.
+Continue with Phase 7.5c deployment docs.
 
 Recommended Phase 7.5 sequence:
 
