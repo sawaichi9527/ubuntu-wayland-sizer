@@ -92,7 +92,7 @@ const POPUP_KEYBINDINGS = Object.freeze(['open-preset-popup']);
 
 const POPUP_PRESET_GROUPS = Object.freeze([
     Object.freeze({ title: 'Center Presets', presets: CENTER_CYCLE_PRESETS }),
-    Object.freeze({ title: 'Window Positions', presets: Object.freeze([PRESETS.LEFT, PRESETS.RIGHT, PRESETS.FULL]) }),
+    Object.freeze({ title: 'Position Presets', presets: Object.freeze([PRESETS.LEFT, PRESETS.RIGHT, PRESETS.FULL]) }),
 ]);
 
 const SavePresetDialog = GObject.registerClass(
