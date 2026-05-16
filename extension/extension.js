@@ -16,6 +16,10 @@ const DEFAULT_CENTER_WIDTH = 1280;
 const DEFAULT_CENTER_HEIGHT = 720;
 const MIN_CENTER_SIZE = 100;
 const UNKNOWN_CYCLE_INDEX = -1;
+const CUSTOM_PRESETS_KEY = 'custom-presets-json';
+const CUSTOM_PRESETS_VERSION = 1;
+const CUSTOM_PRESET_KIND = 'relative-geometry';
+const CUSTOM_PRESET_NAME_MAX_LENGTH = 80;
 
 const PRESETS = Object.freeze({
     LEFT: 'left',
@@ -154,6 +158,67 @@ const POPUP_PRESET_GROUPS = Object.freeze([
     }),
 ]);
 
+const SavePresetDialog = GObject.registerClass(
+class SavePresetDialog extends ModalDialog.ModalDialog {
+    _init(extension, suggestedName) {
+        super._init({ styleClass: 'ubuntu-wayland-sizer-save-dialog' });
+
+        this._extension = extension;
+        this._entry = null;
+        this._buildLayout(suggestedName);
+        this.setButtons([
+            {
+                label: 'Cancel',
+                action: () => this.close(),
+            },
+            {
+                label: 'Save',
+                action: () => this._save(),
+                default: true,
+            },
+        ]);
+    }
+
+    _buildLayout(suggestedName) {
+        const content = new St.BoxLayout({
+            vertical: true,
+            style: 'spacing: 12px; min-width: 420px;',
+        });
+
+        content.add_child(new St.Label({
+            text: 'Save Current Window As Preset',
+            style: 'font-size: 18px; font-weight: bold;',
+        }));
+
+        content.add_child(new St.Label({
+            text: 'Preset name:',
+        }));
+
+        this._entry = new St.Entry({
+            text: suggestedName,
+            can_focus: true,
+            hint_text: 'Preset name',
+            style: 'min-width: 360px;',
+        });
+
+        content.add_child(this._entry);
+        this.contentLayout.add_child(content);
+    }
+
+    _save() {
+        const rawName = this._entry?.get_text ? this._entry.get_text() : this._entry?.clutter_text?.get_text();
+        const name = this._extension._normalizeCustomPresetName(rawName ?? '');
+
+        if (!name) {
+            this._extension._debugLog('custom-preset: save rejected because name is empty');
+            return;
+        }
+
+        this.close();
+        this._extension._saveFocusedWindowGeometryAsCustomPreset(name);
+    }
+});
+
 const PresetPopupDialog = GObject.registerClass(
 class PresetPopupDialog extends ModalDialog.ModalDialog {
     _init(extension, window, context) {
@@ -175,7 +240,7 @@ class PresetPopupDialog extends ModalDialog.ModalDialog {
     _buildLayout() {
         const content = new St.BoxLayout({
             vertical: true,
-            style: 'spacing: 12px; min-width: 520px;',
+            style: 'spacing: 12px; min-width: 560px;',
         });
 
         content.add_child(new St.Label({
@@ -187,6 +252,12 @@ class PresetPopupDialog extends ModalDialog.ModalDialog {
 
         for (const group of POPUP_PRESET_GROUPS)
             content.add_child(this._buildPresetGroup(group));
+
+        const customPresets = this._extension._readCustomPresets();
+        if (customPresets.length > 0)
+            content.add_child(this._buildCustomPresetGroup(customPresets));
+
+        content.add_child(this._buildActionsSection());
 
         this.contentLayout.add_child(content);
     }
@@ -244,6 +315,61 @@ class PresetPopupDialog extends ModalDialog.ModalDialog {
         return box;
     }
 
+    _buildCustomPresetGroup(customPresets) {
+        const box = new St.BoxLayout({
+            vertical: true,
+            style: 'spacing: 6px;',
+        });
+
+        box.add_child(new St.Label({
+            text: 'Saved Presets',
+            style: 'font-weight: bold; padding-top: 6px;',
+        }));
+
+        for (const preset of customPresets) {
+            const button = new St.Button({
+                label: `${preset.name} — ${preset.width}x${preset.height} @ +${preset.x},+${preset.y}`,
+                can_focus: true,
+                style: 'padding: 8px 12px; border-radius: 6px; background-color: rgba(255,255,255,0.10); text-align: left;',
+            });
+
+            button.connect('clicked', () => {
+                this.close();
+                this._extension._applyCustomPresetToFocusedWindow(preset);
+            });
+
+            box.add_child(button);
+        }
+
+        return box;
+    }
+
+    _buildActionsSection() {
+        const box = new St.BoxLayout({
+            vertical: true,
+            style: 'spacing: 6px;',
+        });
+
+        box.add_child(new St.Label({
+            text: 'Actions',
+            style: 'font-weight: bold; padding-top: 6px;',
+        }));
+
+        const button = new St.Button({
+            label: 'Save Current Window As Preset',
+            can_focus: true,
+            style: 'padding: 8px 12px; border-radius: 6px; background-color: rgba(255,255,255,0.10); text-align: left;',
+        });
+
+        button.connect('clicked', () => {
+            this.close();
+            this._extension._openSavePresetDialog();
+        });
+
+        box.add_child(button);
+        return box;
+    }
+
     _formatPresetButtonLabel(presetName, definition) {
         switch (definition?.type) {
         case PRESET_TYPES.LEFT_HALF:
@@ -274,6 +400,7 @@ export default class UbuntuWaylandSizerExtension extends Extension {
             this._pendingTimeoutIds = [];
             this._centerCycleIndex = UNKNOWN_CYCLE_INDEX;
             this._presetPopupDialog = null;
+            this._savePresetDialog = null;
             this._debugLogging = this._readDebugLogging();
             this._debugLog(`enable: settings loaded from metadata settings-schema; debug-logging=${this._debugLogging}`);
 
@@ -332,6 +459,7 @@ export default class UbuntuWaylandSizerExtension extends Extension {
 
     _cleanup() {
         this._closePresetPopupDialog('cleanup');
+        this._closeSavePresetDialog('cleanup');
 
         if (this._pendingTimeoutIds) {
             for (const sourceId of this._pendingTimeoutIds) {
@@ -358,6 +486,7 @@ export default class UbuntuWaylandSizerExtension extends Extension {
         this._registeredKeybindings = [];
         this._centerCycleIndex = UNKNOWN_CYCLE_INDEX;
         this._presetPopupDialog = null;
+        this._savePresetDialog = null;
         this._debugLogging = true;
         this._settings = null;
     }
@@ -379,6 +508,7 @@ export default class UbuntuWaylandSizerExtension extends Extension {
 
         try {
             this._closePresetPopupDialog('replace');
+            this._closeSavePresetDialog('replace');
 
             const context = this._getWindowContext(window);
             this._debugLog(
@@ -408,6 +538,253 @@ export default class UbuntuWaylandSizerExtension extends Extension {
         } catch (error) {
             this._debugLog(`popup: previous dialog already closed/disposed (${reason})`);
         }
+    }
+
+    _openSavePresetDialog() {
+        this._debugLog('custom-preset: save dialog requested');
+
+        try {
+            this._closeSavePresetDialog('replace');
+            const suggestedName = this._buildSuggestedCustomPresetName();
+            this._savePresetDialog = new SavePresetDialog(this, suggestedName);
+            this._savePresetDialog.open();
+        } catch (error) {
+            console.error(`${LOG_PREFIX} custom-preset: failed to open save dialog: ${this._formatError(error)}`);
+            this._savePresetDialog = null;
+        }
+    }
+
+    _closeSavePresetDialog(reason) {
+        const dialog = this._savePresetDialog;
+        this._savePresetDialog = null;
+
+        if (!dialog)
+            return;
+
+        try {
+            dialog.close();
+            this._debugLog(`custom-preset: closed previous save dialog (${reason})`);
+        } catch (error) {
+            this._debugLog(`custom-preset: previous save dialog already closed/disposed (${reason})`);
+        }
+    }
+
+    _buildSuggestedCustomPresetName() {
+        const now = GLib.DateTime.new_now_local();
+        return `preset-${now.format('%Y%m%d-%H%M%S')}`;
+    }
+
+    _normalizeCustomPresetName(name) {
+        return String(name ?? '').trim().slice(0, CUSTOM_PRESET_NAME_MAX_LENGTH);
+    }
+
+    _readCustomPresets() {
+        let rawJson = '';
+
+        try {
+            rawJson = this._settings?.get_string(CUSTOM_PRESETS_KEY) ?? '';
+        } catch (error) {
+            console.error(`${LOG_PREFIX} custom-preset: failed to read ${CUSTOM_PRESETS_KEY}: ${this._formatError(error)}`);
+            return [];
+        }
+
+        try {
+            const parsed = JSON.parse(rawJson || '{"version":1,"presets":[]}');
+
+            if (parsed?.version !== CUSTOM_PRESETS_VERSION || !Array.isArray(parsed.presets))
+                return [];
+
+            return parsed.presets
+                .map(preset => this._validateCustomPreset(preset))
+                .filter(preset => preset !== null);
+        } catch (error) {
+            console.error(`${LOG_PREFIX} custom-preset: failed to parse ${CUSTOM_PRESETS_KEY}: ${this._formatError(error)}`);
+            return [];
+        }
+    }
+
+    _writeCustomPresets(presets) {
+        const payload = {
+            version: CUSTOM_PRESETS_VERSION,
+            presets,
+        };
+
+        try {
+            this._settings?.set_string(CUSTOM_PRESETS_KEY, JSON.stringify(payload));
+        } catch (error) {
+            console.error(`${LOG_PREFIX} custom-preset: failed to write ${CUSTOM_PRESETS_KEY}: ${this._formatError(error)}`);
+        }
+    }
+
+    _validateCustomPreset(preset) {
+        if (!preset || typeof preset !== 'object')
+            return null;
+
+        const id = String(preset.id ?? '').trim();
+        const name = this._normalizeCustomPresetName(preset.name ?? preset.label ?? '');
+        const kind = String(preset.kind ?? '').trim();
+        const x = Number.parseInt(preset.x, 10);
+        const y = Number.parseInt(preset.y, 10);
+        const width = Number.parseInt(preset.width, 10);
+        const height = Number.parseInt(preset.height, 10);
+        const workareaWidth = Number.parseInt(preset.workareaWidth, 10);
+        const workareaHeight = Number.parseInt(preset.workareaHeight, 10);
+        const createdAt = Number.parseInt(preset.createdAt, 10) || 0;
+
+        if (!id || !name || kind !== CUSTOM_PRESET_KIND)
+            return null;
+
+        if (![x, y, width, height].every(Number.isFinite))
+            return null;
+
+        if (width <= 0 || height <= 0)
+            return null;
+
+        return {
+            id,
+            name,
+            kind,
+            x,
+            y,
+            width,
+            height,
+            workareaWidth: Number.isFinite(workareaWidth) && workareaWidth > 0 ? workareaWidth : width,
+            workareaHeight: Number.isFinite(workareaHeight) && workareaHeight > 0 ? workareaHeight : height,
+            createdAt,
+        };
+    }
+
+    _saveFocusedWindowGeometryAsCustomPreset(name) {
+        const window = global.display.get_focus_window();
+
+        if (!window || window.window_type !== Meta.WindowType.NORMAL) {
+            this._debugLog('custom-preset: save ignored because no normal focused window exists');
+            return;
+        }
+
+        const context = this._getWindowContext(window);
+        const preset = this._createCustomPresetFromContext(name, context);
+        const presets = this._readCustomPresets();
+
+        presets.push(preset);
+        this._writeCustomPresets(presets);
+
+        this._debugLog(
+            `custom-preset: saved preset id=${preset.id}, name=${preset.name}, ` +
+            `geometry=${preset.x},${preset.y} ${preset.width}x${preset.height}`
+        );
+    }
+
+    _createCustomPresetFromContext(name, context) {
+        const { workArea, frameRect } = context;
+        const nowSeconds = Math.floor(Date.now() / 1000);
+
+        return {
+            id: `custom-${nowSeconds}-${Math.floor(Math.random() * 100000)}`,
+            name,
+            kind: CUSTOM_PRESET_KIND,
+            x: frameRect.x - workArea.x,
+            y: frameRect.y - workArea.y,
+            width: frameRect.width,
+            height: frameRect.height,
+            workareaWidth: workArea.width,
+            workareaHeight: workArea.height,
+            createdAt: nowSeconds,
+        };
+    }
+
+    _applyCustomPresetToFocusedWindow(preset) {
+        const validPreset = this._validateCustomPreset(preset);
+
+        if (!validPreset) {
+            this._debugLog('custom-preset: apply ignored because preset is invalid');
+            return;
+        }
+
+        this._debugLog(`custom-preset: applying preset id=${validPreset.id}, name=${validPreset.name}`);
+
+        const window = global.display.get_focus_window();
+
+        if (!window || window.window_type !== Meta.WindowType.NORMAL) {
+            this._debugLog('custom-preset: apply ignored because no normal focused window exists');
+            return;
+        }
+
+        const context = this._getWindowContext(window);
+
+        if (this._isEffectivelyFullWorkarea(window, context.workArea, context.frameRect)) {
+            this._breakOutFromFullWorkareaForCustomPreset(window, validPreset, context);
+            return;
+        }
+
+        this._applyCustomPresetToWindow(window, validPreset, 'direct');
+    }
+
+    _breakOutFromFullWorkareaForCustomPreset(window, preset, context) {
+        this._debugLog(
+            `custom-preset: full-workarea state detected; breaking out before preset ${preset.name}: ` +
+            `monitor=${context.monitorIndex}, ` +
+            `workarea=${context.workArea.x},${context.workArea.y} ${context.workArea.width}x${context.workArea.height}, ` +
+            `frame=${context.frameRect.x},${context.frameRect.y} ${context.frameRect.width}x${context.frameRect.height}`
+        );
+
+        try {
+            this._unmakeFullscreenBestEffort(window);
+            this._unmaximizeBestEffort(window);
+            this._moveToMonitorBestEffort(window, context.monitorIndex);
+
+            const safeRect = this._calculateSafeRestoreGeometry(context.workArea);
+            window.move_frame(true, safeRect.x, safeRect.y);
+            window.move_resize_frame(true, safeRect.x, safeRect.y, safeRect.width, safeRect.height);
+        } catch (error) {
+            console.error(`${LOG_PREFIX} custom-preset: safe restore failed before preset ${preset.name}: ${this._formatError(error)}`);
+        }
+
+        this._scheduleTimeout(POST_UNMAXIMIZE_RESIZE_DELAY_MS, () => {
+            this._applyCustomPresetToWindow(window, preset, 'after-full-workarea-breakout');
+        });
+    }
+
+    _applyCustomPresetToWindow(window, preset, reason) {
+        const context = this._getWindowContext(window);
+        const target = this._calculateCustomPresetGeometry(preset, context.workArea);
+
+        this._debugLog(
+            `custom-preset: geometry context (${reason}): ` +
+            `monitor=${context.monitorIndex}, ` +
+            `workarea=${context.workArea.x},${context.workArea.y} ${context.workArea.width}x${context.workArea.height}, ` +
+            `frame=${context.frameRect.x},${context.frameRect.y} ${context.frameRect.width}x${context.frameRect.height}`
+        );
+
+        if (!this._isUsableGeometry(target)) {
+            console.error(
+                `${LOG_PREFIX} custom-preset: invalid target geometry for ${preset.name}: ` +
+                `${target.x},${target.y} ${target.width}x${target.height}`
+            );
+            return;
+        }
+
+        try {
+            this._moveToMonitorBestEffort(window, context.monitorIndex);
+            window.move_frame(true, target.x, target.y);
+            window.move_resize_frame(true, target.x, target.y, target.width, target.height);
+
+            this._debugLog(
+                `custom-preset: applied preset ${preset.name}: ` +
+                `${target.x},${target.y} ${target.width}x${target.height}`
+            );
+        } catch (error) {
+            console.error(`${LOG_PREFIX} custom-preset: move_resize_frame failed for ${preset.name}: ${this._formatError(error)}`);
+        }
+    }
+
+    _calculateCustomPresetGeometry(preset, workArea) {
+        return this._clampGeometryToWorkArea({
+            x: workArea.x + preset.x,
+            y: workArea.y + preset.y,
+            width: Math.min(preset.width, workArea.width),
+            height: Math.min(preset.height, workArea.height),
+        }, workArea);
     }
 
     _cycleCenterPreset(direction) {
