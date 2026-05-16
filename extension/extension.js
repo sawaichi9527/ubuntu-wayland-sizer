@@ -1368,7 +1368,7 @@ export default class UbuntuWaylandSizerExtension extends Extension {
                 return true;
             return Boolean(window.maximizedHorizontally && window.maximizedVertically);
         } catch (error) {
-            console.error(`${LOG_PREFIX} action: failed to check maximized state: ${this._formatError(error)}`);
+            this._warningLog(`action: failed to check maximized state: ${this._formatError(error)}`);
             return false;
         }
     }
@@ -1378,7 +1378,7 @@ export default class UbuntuWaylandSizerExtension extends Extension {
             if (window.unmake_fullscreen)
                 window.unmake_fullscreen();
         } catch (error) {
-            console.error(`${LOG_PREFIX} action: unmake_fullscreen skipped/failed: ${this._formatError(error)}`);
+            this._warningLog(`action: unmake_fullscreen skipped/failed: ${this._formatError(error)}`);
         }
     }
 
@@ -1393,7 +1393,7 @@ export default class UbuntuWaylandSizerExtension extends Extension {
             else
                 window.unmaximize(Meta.MaximizeFlags.BOTH);
         } catch (error) {
-            console.error(`${LOG_PREFIX} action: unmaximize skipped/failed: ${this._formatError(error)}`);
+            this._warningLog(`action: unmaximize skipped/failed: ${this._formatError(error)}`);
         }
     }
 
@@ -1402,7 +1402,7 @@ export default class UbuntuWaylandSizerExtension extends Extension {
             if (window.move_to_monitor)
                 window.move_to_monitor(monitorIndex);
         } catch (error) {
-            console.error(`${LOG_PREFIX} action: move_to_monitor skipped/failed: ${this._formatError(error)}`);
+            this._warningLog(`action: move_to_monitor skipped/failed: ${this._formatError(error)}`);
         }
     }
 
@@ -1412,7 +1412,7 @@ export default class UbuntuWaylandSizerExtension extends Extension {
             const height = this._settings?.get_int('center-height') ?? DEFAULT_CENTER_HEIGHT;
             return { width: Math.max(MIN_CENTER_SIZE, width), height: Math.max(MIN_CENTER_SIZE, height) };
         } catch (error) {
-            console.error(`${LOG_PREFIX} failed to read center size settings: ${this._formatError(error)}`);
+            this._criticalLog(`failed to read center size settings: ${this._formatError(error)}`);
             return { width: DEFAULT_CENTER_WIDTH, height: DEFAULT_CENTER_HEIGHT };
         }
     }
@@ -1421,7 +1421,7 @@ export default class UbuntuWaylandSizerExtension extends Extension {
         try {
             return this._settings?.get_boolean('debug-logging') ?? true;
         } catch (error) {
-            console.error(`${LOG_PREFIX} failed to read debug-logging setting: ${this._formatError(error)}`);
+            this._criticalLog(`failed to read debug-logging setting: ${this._formatError(error)}`);
             return true;
         }
     }
