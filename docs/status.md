@@ -307,6 +307,7 @@ Phase 7.5a roadmap and guardrails: PASS
 Phase 7.5b version visibility: PASS
 Phase 7.5c deployment docs: PASS
 Phase 7.5d UX wording polish: PASS
+Phase 7.5e i18n-ready note only: IN PROGRESS
 ```
 
 ## Next Recommended Step
