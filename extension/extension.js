@@ -242,11 +242,20 @@ class PresetPopupDialog extends ModalDialog.ModalDialog {
         const debugEnabled = this._extension._readDebugLogging();
         const box = new St.BoxLayout({ vertical: true, style: 'spacing: 6px; padding: 8px 10px; border-radius: 8px; background-color: rgba(255,255,255,0.06); min-width: 170px;' });
 
-        box.add_child(new St.Label({
-            text: `Log: ${debugEnabled ? 'Debug' : 'Normal'}`,
+        const logStatusRow = new St.BoxLayout({
+            vertical: false,
             x_align: Clutter.ActorAlign.CENTER,
+            style: 'spacing: 4px;',
+        });
+        logStatusRow.add_child(new St.Label({
+            text: 'Log:',
             style: 'font-weight: bold;',
         }));
+        logStatusRow.add_child(new St.Label({
+            text: debugEnabled ? 'Debug' : 'Normal',
+            style: `font-weight: bold; color: ${debugEnabled ? '#ff6b6b' : '#3584e4'};`,
+        }));
+        box.add_child(logStatusRow);
 
         const button = new St.Button({
             label: debugEnabled ? 'Switch to Normal' : 'Switch to Debug',
@@ -282,7 +291,7 @@ class PresetPopupDialog extends ModalDialog.ModalDialog {
         box.add_child(new St.Label({ text: 'Current Displays', style: 'font-weight: bold;' }));
 
         for (const display of this._extension._getDisplayInfos())
-            box.add_child(new St.Label({ text: `${display.displayNumber}. ${display.label} · ${this._extension._formatOrientation(display.orientation)} · ${display.workArea.width}x${display.workArea.height}` }));
+            box.add_child(new St.Label({ text: `${display.displayNumber}. ${display.label} · ${this._extension._formatOrientation(display.orientation)} · screen ${display.screenGeometry.width}x${display.screenGeometry.height} · workarea ${display.workArea.width}x${display.workArea.height}` }));
 
         return box;
     }
@@ -945,7 +954,8 @@ export default class UbuntuWaylandSizerExtension extends Extension {
                 const workArea = workspace.get_work_area_for_monitor(monitorIndex);
                 const monitor = monitors[monitorIndex] ?? {};
                 const label = this._extractMonitorLabel(monitor, monitorIndex);
-                infos.push({ monitorIndex, displayNumber: monitorIndex + 1, label, workArea, orientation: this._getOrientation(workArea.width, workArea.height) });
+                const screenGeometry = this._getMonitorGeometry(monitor, workArea);
+                infos.push({ monitorIndex, displayNumber: monitorIndex + 1, label, workArea, screenGeometry, orientation: this._getOrientation(screenGeometry.width, screenGeometry.height) });
             } catch (error) {
                 this._debugLog(`display: failed to inspect monitor ${monitorIndex}: ${this._formatError(error)}`);
             }
@@ -956,6 +966,7 @@ export default class UbuntuWaylandSizerExtension extends Extension {
             displayNumber: 1,
             label: 'Display 1',
             workArea: workspace.get_work_area_for_monitor(0),
+            screenGeometry: workspace.get_work_area_for_monitor(0),
             orientation: 'landscape',
         }];
     }
@@ -966,6 +977,7 @@ export default class UbuntuWaylandSizerExtension extends Extension {
             displayNumber: monitorIndex + 1,
             label: `Display ${monitorIndex + 1}`,
             workArea: { width: 1, height: 1 },
+            screenGeometry: { x: 0, y: 0, width: 1, height: 1 },
             orientation: 'landscape',
         };
     }
