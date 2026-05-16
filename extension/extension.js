@@ -281,7 +281,8 @@ class PresetPopupDialog extends ModalDialog.ModalDialog {
         const box = new St.BoxLayout({ vertical: true, style: 'spacing: 2px; padding: 8px 10px; border-radius: 8px; background-color: rgba(255,255,255,0.08);' });
         box.add_child(new St.Label({ text: 'Focused Window', style: 'font-weight: bold;' }));
         box.add_child(new St.Label({ text: `Current preset: ${currentPresetLabel}`, style: 'color: #3584e4; font-weight: bold;' }));
-        box.add_child(new St.Label({ text: `Display ${monitorIndex + 1} · ${frameRect.width}x${frameRect.height} · frame ${frameRect.x},${frameRect.y}` }));
+        const displayInfo = this._extension._getDisplayInfoForMonitor(monitorIndex);
+        box.add_child(new St.Label({ text: `Display ${displayInfo.displayNumber} · ${frameRect.width}x${frameRect.height} · frame ${frameRect.x},${frameRect.y}` }));
         box.add_child(new St.Label({ text: `Workarea ${workArea.x},${workArea.y} ${workArea.width}x${workArea.height} · relative ${relativeX},${relativeY}` }));
         return box;
     }
@@ -290,7 +291,7 @@ class PresetPopupDialog extends ModalDialog.ModalDialog {
         const box = new St.BoxLayout({ vertical: true, style: 'spacing: 2px; padding: 8px 10px; border-radius: 8px; background-color: rgba(255,255,255,0.06);' });
         box.add_child(new St.Label({ text: 'Current Displays', style: 'font-weight: bold;' }));
 
-        for (const display of this._extension._getDisplayInfos())
+        for (const display of this._extension._getDisplayInfos().sort((a, b) => a.displayNumber - b.displayNumber))
             box.add_child(new St.Label({ text: `${display.displayNumber}. ${display.label} · ${this._extension._formatOrientation(display.orientation)} · screen ${display.screenGeometry.width}x${display.screenGeometry.height} · workarea ${display.workArea.width}x${display.workArea.height}` }));
 
         return box;
@@ -947,6 +948,8 @@ export default class UbuntuWaylandSizerExtension extends Extension {
         const workspace = global.workspace_manager.get_active_workspace();
         const monitors = Main.layoutManager?.monitors ?? [];
         const count = monitors.length || global.display.get_n_monitors?.() || 1;
+        const primaryMonitorIndex = this._getPrimaryMonitorIndex();
+        const monitorOrder = this._buildUserFacingMonitorOrder(count, primaryMonitorIndex);
         const infos = [];
 
         for (let monitorIndex = 0; monitorIndex < count; monitorIndex++) {
@@ -955,7 +958,8 @@ export default class UbuntuWaylandSizerExtension extends Extension {
                 const monitor = monitors[monitorIndex] ?? {};
                 const label = this._extractMonitorLabel(monitor, monitorIndex);
                 const screenGeometry = this._getMonitorGeometry(monitor, workArea);
-                infos.push({ monitorIndex, displayNumber: monitorIndex + 1, label, workArea, screenGeometry, orientation: this._getOrientation(screenGeometry.width, screenGeometry.height) });
+                const displayNumber = monitorOrder.indexOf(monitorIndex) + 1;
+                infos.push({ monitorIndex, displayNumber, label, workArea, screenGeometry, orientation: this._getOrientation(screenGeometry.width, screenGeometry.height) });
             } catch (error) {
                 this._debugLog(`display: failed to inspect monitor ${monitorIndex}: ${this._formatError(error)}`);
             }
@@ -969,6 +973,33 @@ export default class UbuntuWaylandSizerExtension extends Extension {
             screenGeometry: workspace.get_work_area_for_monitor(0),
             orientation: 'landscape',
         }];
+    }
+
+    _getPrimaryMonitorIndex() {
+        const primaryIndex = Number.parseInt(Main.layoutManager?.primaryIndex, 10);
+        if (Number.isFinite(primaryIndex) && primaryIndex >= 0)
+            return primaryIndex;
+
+        const primaryMonitor = Main.layoutManager?.primaryMonitor;
+        const monitors = Main.layoutManager?.monitors ?? [];
+        const byObject = monitors.indexOf(primaryMonitor);
+        if (byObject >= 0)
+            return byObject;
+
+        return 0;
+    }
+
+    _buildUserFacingMonitorOrder(count, primaryMonitorIndex) {
+        const order = [];
+        if (primaryMonitorIndex >= 0 && primaryMonitorIndex < count)
+            order.push(primaryMonitorIndex);
+
+        for (let monitorIndex = 0; monitorIndex < count; monitorIndex++) {
+            if (!order.includes(monitorIndex))
+                order.push(monitorIndex);
+        }
+
+        return order;
     }
 
     _getMonitorGeometry(monitor, workArea) {
