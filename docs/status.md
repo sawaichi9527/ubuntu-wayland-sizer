@@ -2,9 +2,21 @@
 
 ## Current Milestone
 
-Phase 3 built-in preset dispatcher is functionally validated.
+Phase 7.3 is functionally complete through popup runtime controls.
 
-Phase 4 multi-monitor, portrait-monitor, mixed-scaling, minimum-width constrained app, and full-workarea breakout behavior are functionally validated for the current core test set.
+The current baseline includes:
+
+- built-in preset resizing
+- configurable center size
+- center preset cycling
+- popup preset selection
+- custom saved presets
+- save/delete popup flows
+- built-in preset feedback overlay
+- structured GNOME Shell journal logging
+- popup runtime debug-log toggle
+
+Phase 7.3e is a cleanup/documentation phase before starting Phase 7.4.
 
 ## Validation Environment
 
@@ -23,7 +35,7 @@ Phase 4 multi-monitor, portrait-monitor, mixed-scaling, minimum-width constraine
 
 ## Confirmed Behavior
 
-- Extension can be disabled and enabled cleanly.
+- Extension can be disabled and enabled cleanly after deploy and logout/login.
 - Extension-local GSettings schema is found after logout/login and reinstall.
 - Built-in preset keybindings are registered successfully.
 - The current non-arrow keybindings trigger preset actions reliably.
@@ -32,14 +44,26 @@ Phase 4 multi-monitor, portrait-monitor, mixed-scaling, minimum-width constraine
 - Mixed-scaling logical workarea geometry is usable.
 - Electron minimum-width constrained windows can be edge-corrected after resize.
 - Full-workarea/maximized-like windows can be broken out before applying left/right/center presets.
+- Center preset cycling works across Compact, Custom, and Large center presets.
+- Popup preset selection works for built-in and saved custom presets.
+- Saved custom presets can be created, persisted, applied, and deleted.
+- Popup save/delete secondary dialogs return to the popup after non-terminal decisions.
+- Invalid saved-preset names remain inside the save dialog.
+- Built-in preset feedback overlay appears after built-in preset application and center cycling.
+- Structured journal logs use NORMAL, DEBUG, WARNING, and CRITICAL levels.
+- DEBUG logs are gated by the `debug-logging` setting.
+- Popup runtime controls can switch between Normal and Debug logging modes without restarting the extension.
 
-## Confirmed Presets
+## Confirmed Presets and Shortcuts
 
 ```text
 Super + Alt + H      -> Left half
 Super + Alt + L      -> Right half
 Super + Alt + F      -> Full workarea
-Super + Alt + C      -> Center 1280x720
+Super + Alt + C      -> Custom center
+Super + Alt + .      -> Cycle center next
+Super + Alt + ,      -> Cycle center previous
+Super + Alt + Space  -> Open preset popup
 ```
 
 Arrow-key defaults were removed because Ubuntu/GNOME may intercept `Super + Alt + Arrow` combinations for window switching or window-management behavior.
@@ -55,7 +79,7 @@ The following applications have been tested successfully on both the primary mon
 - VSCode .deb
 - UpNote .deb
 
-The 100% + 150% mixed-scaling smoke test passed across the primary and secondary monitor for the current four-app test set.
+The 100% + 150% mixed-scaling smoke test passed across the primary and secondary monitor for the current core test set.
 
 ## Confirmed Geometry Examples
 
@@ -91,16 +115,16 @@ center -> 1920,280 720x720
 
 ## Full-workarea Breakout Validation
 
-The latest implementation detects full-workarea/maximized-like frames by comparing the window frame against the monitor workarea, not only by checking `get_maximized()`.
+The implementation detects full-workarea/maximized-like frames by comparing the window frame against the monitor workarea, not only by checking `get_maximized()`.
 
 Expected successful flow:
 
 ```text
-[ubuntu-wayland-sizer] action: full-workarea state detected; breaking out before preset left
-[ubuntu-wayland-sizer] action: applied safe restore before preset left
-[ubuntu-wayland-sizer] action: geometry context (after-full-workarea-breakout)
-[ubuntu-wayland-sizer] action: applied preset left
-[ubuntu-wayland-sizer] action: post-correction not needed for left
+[ubuntu-wayland-sizer][DEBUG] action: full-workarea state detected; breaking out before preset left
+[ubuntu-wayland-sizer][DEBUG] action: applied safe restore before preset left
+[ubuntu-wayland-sizer][DEBUG] action: geometry context (after-full-workarea-breakout)
+[ubuntu-wayland-sizer][DEBUG] action: applied preset left
+[ubuntu-wayland-sizer][DEBUG] action: post-correction not needed for left
 ```
 
 This has been validated on both primary and secondary monitor paths in mixed-scaling tests.
@@ -109,7 +133,7 @@ This has been validated on both primary and secondary monitor paths in mixed-sca
 
 UpNote/Electron may reject narrow half-width requests on portrait monitors because the requested half width can be smaller than the app's minimum width.
 
-The extension now accepts the actual window size after Mutter/app constraints are applied and then edge-corrects the window to the intended side.
+The extension accepts the actual window size after Mutter/app constraints are applied and then edge-corrects the window to the intended side.
 
 Example:
 
@@ -121,22 +145,92 @@ corrected right position: workarea.right - 600
 
 This means constrained apps may not visually occupy exactly 50% of a narrow portrait monitor, but they are aligned correctly within the available workarea.
 
-## Observed Expected Logs
+## Structured Logging Baseline
+
+Current log format:
 
 ```text
-[ubuntu-wayland-sizer] disable: start
-[ubuntu-wayland-sizer] cleanup: keybinding removed: resize-left
-[ubuntu-wayland-sizer] cleanup: keybinding removed: resize-right
-[ubuntu-wayland-sizer] cleanup: keybinding removed: resize-full
-[ubuntu-wayland-sizer] cleanup: keybinding removed: resize-center
-[ubuntu-wayland-sizer] disabled
-[ubuntu-wayland-sizer] enable: start
-[ubuntu-wayland-sizer] enable: settings loaded from metadata settings-schema
-[ubuntu-wayland-sizer] enable: keybinding registered: resize-left -> left
-[ubuntu-wayland-sizer] enable: keybinding registered: resize-right -> right
-[ubuntu-wayland-sizer] enable: keybinding registered: resize-full -> full
-[ubuntu-wayland-sizer] enable: keybinding registered: resize-center -> center
-[ubuntu-wayland-sizer] enabled
+[ubuntu-wayland-sizer][NORMAL] enable: start
+[ubuntu-wayland-sizer][DEBUG] popup: open requested
+[ubuntu-wayland-sizer][WARNING] action: post-correction failed for center: ...
+[ubuntu-wayland-sizer][CRITICAL] custom-preset: failed to parse custom-presets-json: ...
+```
+
+Log-level policy:
+
+```text
+NORMAL   user-visible operation result or runtime mode change
+DEBUG    geometry trace, inference, popup lifecycle details
+WARNING  recoverable anomaly; correction or fallback happened
+CRITICAL real failure; feature may not work
+```
+
+DEBUG logs are controlled by:
+
+```text
+debug-logging
+```
+
+Popup runtime controls can switch:
+
+```text
+Log: Debug  -> Switch to Normal
+Log: Normal -> Switch to Debug
+```
+
+Observed runtime toggle events:
+
+```text
+[ubuntu-wayland-sizer][NORMAL] logging mode changed: DEBUG disabled (popup control)
+[ubuntu-wayland-sizer][NORMAL] logging mode changed: DEBUG enabled (popup control)
+```
+
+## Popup Runtime Controls Baseline
+
+Current popup layout:
+
+```text
+Popup title: Ubuntu Wayland Sizer
+
+Focused Window section                       Log control section
+Current Displays section
+Center Presets
+Window Positions
+Saved Presets
+Actions
+```
+
+The Log control section is intentionally lightweight. It is not a full settings UI.
+
+## Development Deployment Flow
+
+For local validation:
+
+```bash
+git pull
+./scripts/install-extension-dev.sh
+glib-compile-schemas ~/.local/share/gnome-shell/extensions/ubuntu-wayland-sizer@sawaichi9527/schemas
+```
+
+After JavaScript class/method changes, use a full GNOME logout/login to avoid GJS module-cache confusion.
+
+Then confirm extension state:
+
+```bash
+gnome-extensions info ubuntu-wayland-sizer@sawaichi9527
+```
+
+Expected status:
+
+```text
+已啟用: 是
+狀態: ACTIVE
+```
+
+Watch logs:
+
+```bash
+journalctl --user -f -o cat /usr/bin/gnome-shell | grep ubuntu-wayland-sizer
 ```
 
 ## Non-blocking Warnings Observed
@@ -174,16 +268,25 @@ resource:///org/gnome/shell/ui/appDisplay.js
 file:///usr/share/gnome-shell/extensions/ubuntu-dock@ubuntu.com/docking.js
 ```
 
+## Phase Status
+
+```text
+Phase 7.2f popup/custom-preset usability: PASS
+Phase 7.3 preset cycling and popup selection baseline: COMPLETE
+Phase 7.3c structured logging backend: COMPLETE
+Phase 7.3d popup runtime controls: COMPLETE
+Phase 7.3e roadmap cleanup: IN PROGRESS
+```
+
 ## Next Recommended Step
 
-Continue Phase 4 hardening before adding D-Bus or GTK4 UI.
+Finish Phase 7.3e cleanup, then move to Phase 7.4.
 
-Suggested next test coverage:
+Recommended Phase 7.4 scope:
 
-- 100% + 125% retest with the latest full-workarea breakout logic
-- Repeated maximize -> H/L/C stress loops
-- Minimum-size constrained dialogs
-- Additional Electron applications
-- Apps with client-side decorations
+- preset library expansion
+- popup grouping/polish for larger preset sets
+- optional preset cycling refinements
+- keep runtime controls lightweight
 
-Do not add D-Bus or GTK4 UI until the extension-only geometry behavior is stable enough.
+Do not add D-Bus, GTK4 settings UI, or a background service until the extension-only behavior remains stable across the Phase 7 popup/runtime-control baseline.
