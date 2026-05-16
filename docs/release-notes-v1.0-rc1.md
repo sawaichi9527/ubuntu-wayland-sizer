@@ -54,7 +54,7 @@ Super + Alt + Space  -> Open preset popup
 Expected release artifact:
 
 ```text
-ubuntu-wayland-sizer-v1.0-gnome50.zip
+ubuntu-wayland-sizer-v1.0-rc1-gnome50.zip
 ```
 
 The release ZIP contains only GNOME Shell extension runtime files:
@@ -73,7 +73,7 @@ gnome-extensions disable ubuntu-wayland-sizer@sawaichi9527 || true
 rm -rf ~/.local/share/gnome-shell/extensions/ubuntu-wayland-sizer@sawaichi9527
 mkdir -p ~/.local/share/gnome-shell/extensions
 
-unzip ubuntu-wayland-sizer-v1.0-gnome50.zip -d ~/.local/share/gnome-shell/extensions
+unzip ubuntu-wayland-sizer-v1.0-rc1-gnome50.zip -d ~/.local/share/gnome-shell/extensions
 ```
 
 Then log out and log back in.
