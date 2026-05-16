@@ -337,6 +337,18 @@ Also confirm:
 - no TypeError / ReferenceError appears in logs
 ```
 
+## Future Release Checklist Note
+
+Before a formal public release, revisit Extension Manager integration:
+
+```text
+- publish or prepare for publishing on extensions.gnome.org
+- confirm View Details no longer shows the local/dev detail-page error
+- confirm update-check Not Found warning is resolved or documented for release builds
+```
+
+This is intentionally deferred from Phase 7.5d because the current branch is still a local/dev release-readiness baseline.
+
 ## Pass Criteria
 
 Phase 7.5d passes when:
