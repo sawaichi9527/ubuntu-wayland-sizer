@@ -286,6 +286,93 @@ Custom saved presets are chosen deliberately from the popup and are not part of 
 
 ---
 
+## Phase 7.3c-4 Logging Level Audit
+
+Phase 7.3c-4 improves observability without changing sizing behavior. The goal is lightweight, useful journal output for a small focused-window sizing tool, not a full logging framework.
+
+### 7.3c-4A — Logging Level Backend
+
+Use four log levels:
+
+```text
+CRITICAL  real failure; feature may not work
+WARNING   recoverable anomaly; correction or fallback happened
+NORMAL    user-visible operation result or runtime mode change
+DEBUG     geometry trace, inference, popup lifecycle details
+```
+
+Output policy:
+
+```text
+NORMAL/WARNING/CRITICAL are always written to journal.
+DEBUG is written only when debug-logging=true.
+```
+
+Suggested format:
+
+```text
+[ubuntu-wayland-sizer][NORMAL] action: applied preset center: 393,189 1200x854
+[ubuntu-wayland-sizer][WARNING] action: post-corrected preset center-large: actual=273,232 800x600, corrected=593,316 800x600
+[ubuntu-wayland-sizer][CRITICAL] custom-preset: failed to parse custom-presets-json: ...
+[ubuntu-wayland-sizer][DEBUG] action: geometry context ...
+```
+
+Do not add custom timestamps. journald/syslog already provide timestamps, process information, and ordering.
+
+### 7.3c-4B — Popup Runtime Controls Foundation
+
+Popup header should reserve a lightweight runtime controls area. Initially it only provides:
+
+```text
+Log: Normal / Log: Debug
+```
+
+Behavior:
+
+```text
+Log: Normal -> debug-logging=false
+Log: Debug  -> debug-logging=true
+```
+
+Switching must be immediate and must not require extension restart, schema recompilation, logout/login, or GNOME Shell restart.
+
+The mode-change event itself must always be written as NORMAL, not DEBUG:
+
+```text
+[ubuntu-wayland-sizer][NORMAL] logging mode changed: DEBUG enabled (popup control)
+[ubuntu-wayland-sizer][NORMAL] logging mode changed: DEBUG disabled (popup control)
+```
+
+Reason: when disabling debug, the transition must still be visible in journal.
+
+The popup header layout should not be tightly coupled to logging. It should remain usable as a future runtime controls area for localization, for example:
+
+```text
+Language: zh_TW / EN
+Log: Normal / Debug
+```
+
+Future language changes should similarly emit NORMAL events:
+
+```text
+[ubuntu-wayland-sizer][NORMAL] language changed: zh_TW (popup control)
+```
+
+### Guardrails
+
+```text
+No background daemon
+No timer-based log polling
+No extension-owned log file writer
+No custom timestamp prefix
+No full settings UI
+No per-category debug matrix
+No popup-as-control-center expansion
+No resize/geometry behavior changes
+```
+
+---
+
 ## Validation Matrix
 
 Minimum apps:
@@ -324,6 +411,9 @@ Open popup after manual/custom geometry and confirm Custom / Manual size label
 Repeated built-in preset shortcuts update one overlay without stacking
 Overlay shows actual clamped size on portrait/small workarea
 Custom saved preset apply does not show overlay
+Debug disabled: NORMAL/WARNING/CRITICAL are visible; DEBUG is hidden
+Debug enabled: DEBUG trace appears
+Popup log toggle writes a NORMAL mode-change event
 ```
 
 ---
@@ -343,6 +433,8 @@ Custom saved preset apply does not show overlay
 - Overlay must not stack on repeated shortcuts.
 - Overlay must clean up on extension disable.
 - Overlay must not appear for custom saved preset application.
+- Log-level changes must not change resize behavior.
+- Runtime log toggle must write a NORMAL event.
 
 ---
 
@@ -372,6 +464,9 @@ Phase 7.3 passes when:
 - Repeated shortcut presses update one overlay instead of stacking.
 - Overlay auto-hides after about 1300 ms.
 - Saved custom preset apply does not show overlay.
+- NORMAL logs remain visible when debug logging is disabled.
+- DEBUG logs appear only when debug logging is enabled.
+- Popup logging mode toggle writes a NORMAL journal event.
 - No new blocking GNOME Shell warnings appear.
 
 ---
@@ -407,4 +502,5 @@ Phase 7.3 preset cycling validation: IN PROGRESS
 Phase 7.3a cycle-state implementation fix: REQUIRED
 Phase 7.3b-A popup focused-window status polish: READY
 Phase 7.3b-B built-in preset apply feedback overlay: READY
+Phase 7.3c-4 logging level audit: READY
 ```
