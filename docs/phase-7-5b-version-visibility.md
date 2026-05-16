@@ -39,10 +39,21 @@ The displayed version comes from GNOME Shell extension metadata:
 }
 ```
 
+GNOME Shell extension metadata versions are normally integer values.
+
+The popup formatting rule is intentionally:
+
+```text
+1 -> v1.0
+2 -> v2.0
+```
+
+This keeps the popup looking release-oriented without introducing a separate semantic-version management system.
+
 The popup should render:
 
 ```text
-Ubuntu Wayland Sizer · v1
+Ubuntu Wayland Sizer · v1.0
 ```
 
 If the metadata version is missing or empty, the popup should fall back to:
@@ -85,7 +96,7 @@ Super + Alt + Space
 Expected popup title:
 
 ```text
-Ubuntu Wayland Sizer · v1
+Ubuntu Wayland Sizer · v1.0
 ```
 
 Also verify the existing popup runtime controls still work:
@@ -100,7 +111,7 @@ Log: Normal -> Switch to Debug
 Phase 7.5b passes when:
 
 ```text
-- popup title shows metadata version
+- popup title shows metadata version as vN.0
 - missing/empty metadata version falls back safely to the plain title
 - no schema changes are required
 - no protected-core geometry behavior changes
