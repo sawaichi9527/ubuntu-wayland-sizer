@@ -218,6 +218,74 @@ User-configurable popup styling
 
 ---
 
+## Phase 7.3b-B Built-in Preset Apply Feedback Overlay
+
+Phase 7.3b-B adds a lightweight visual confirmation after built-in preset application.
+
+Plain-language goal:
+
+```text
+When the user quickly changes window size with shortcuts or built-in popup presets, briefly show what size preset was just applied.
+```
+
+Included built-in presets:
+
+```text
+Left half
+Right half
+Full workarea
+Custom center
+Compact center
+Large center
+Center cycle next / previous results
+```
+
+Excluded:
+
+```text
+Custom saved preset overlay
+Saved preset semantic tracking
+Recent preset memory
+Last non-center restore
+Notification-center integration
+User-configurable overlay duration
+Complex animation
+```
+
+Overlay behavior:
+
+```text
+1. Show only after a built-in preset is successfully applied.
+2. Display preset label and actual target size.
+3. Use one overlay only; do not stack multiple overlays.
+4. During repeated shortcut presses, update the same overlay text and reset the timeout.
+5. Auto-hide after about 1300 ms.
+6. Do not write persistent state.
+7. Remove overlay and pending timeout on extension disable.
+```
+
+Suggested display:
+
+```text
+Large center
+1440 × 768
+```
+
+If the preset is clamped by a small/portrait display, show the actual clamped target:
+
+```text
+Large center
+720 × 768
+```
+
+Reason custom saved presets are excluded:
+
+```text
+Custom saved presets are chosen deliberately from the popup and are not part of the fast keyboard cycle. The user already knows which saved preset was selected, so an overlay adds less value there.
+```
+
+---
+
 ## Validation Matrix
 
 Minimum apps:
@@ -253,6 +321,9 @@ Saved preset apply then center cycle
 Full workarea then center cycle
 Open popup after left/right/full/center presets and confirm Current preset label
 Open popup after manual/custom geometry and confirm Custom / Manual size label
+Repeated built-in preset shortcuts update one overlay without stacking
+Overlay shows actual clamped size on portrait/small workarea
+Custom saved preset apply does not show overlay
 ```
 
 ---
@@ -269,6 +340,9 @@ Open popup after manual/custom geometry and confirm Custom / Manual size label
 - Cycling must not break popup save/delete return behavior from Phase 7.2f.
 - Popup status display must not write persistent state.
 - Popup title/status polish must not change preset apply behavior.
+- Overlay must not stack on repeated shortcuts.
+- Overlay must clean up on extension disable.
+- Overlay must not appear for custom saved preset application.
 
 ---
 
@@ -292,6 +366,12 @@ Phase 7.3 passes when:
 - Focused Window section shows a blue bold Current preset line.
 - Current preset is correct for left, right, full, compact center, custom center, and large center.
 - Current preset falls back to Custom / Manual size for unmatched geometry.
+- Built-in preset overlay appears after direct built-in shortcut use.
+- Built-in preset overlay appears after center-cycle shortcut use.
+- Overlay shows preset label and actual target size.
+- Repeated shortcut presses update one overlay instead of stacking.
+- Overlay auto-hides after about 1300 ms.
+- Saved custom preset apply does not show overlay.
 - No new blocking GNOME Shell warnings appear.
 
 ---
@@ -326,4 +406,5 @@ Phase 7.2f popup/custom-preset usability: PASS
 Phase 7.3 preset cycling validation: IN PROGRESS
 Phase 7.3a cycle-state implementation fix: REQUIRED
 Phase 7.3b-A popup focused-window status polish: READY
+Phase 7.3b-B built-in preset apply feedback overlay: READY
 ```
