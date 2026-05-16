@@ -24,6 +24,7 @@ const CUSTOM_PRESET_KIND = 'relative-geometry';
 const CUSTOM_PRESET_NAME_MAX_LENGTH = 80;
 const POPUP_SCROLL_MAX_HEIGHT = 760;
 const POPUP_REOPEN_DELAY_MS = 80;
+const PRESET_FEEDBACK_OVERLAY_DURATION_MS = 1300;
 
 const PRESETS = Object.freeze({
     LEFT: 'left',
@@ -337,6 +338,10 @@ export default class UbuntuWaylandSizerExtension extends Extension {
             this._savePresetDialog = null;
             this._deletePresetDialog = null;
             this._lastPopupWindow = null;
+            this._presetFeedbackOverlay = null;
+            this._presetFeedbackTitleLabel = null;
+            this._presetFeedbackSizeLabel = null;
+            this._presetFeedbackTimeoutId = 0;
             this._debugLogging = this._readDebugLogging();
             this._debugLog(`enable: settings loaded from metadata settings-schema; debug-logging=${this._debugLogging}`);
 
@@ -376,6 +381,7 @@ export default class UbuntuWaylandSizerExtension extends Extension {
         this._closePresetPopupDialog('cleanup');
         this._closeSavePresetDialog('cleanup');
         this._closeDeletePresetDialog('cleanup');
+        this._destroyPresetFeedbackOverlay('cleanup');
 
         if (this._pendingTimeoutIds) {
             for (const sourceId of this._pendingTimeoutIds) {
@@ -405,6 +411,10 @@ export default class UbuntuWaylandSizerExtension extends Extension {
         this._savePresetDialog = null;
         this._deletePresetDialog = null;
         this._lastPopupWindow = null;
+        this._presetFeedbackOverlay = null;
+        this._presetFeedbackTitleLabel = null;
+        this._presetFeedbackSizeLabel = null;
+        this._presetFeedbackTimeoutId = 0;
         this._debugLogging = true;
         this._settings = null;
     }
@@ -1080,6 +1090,7 @@ export default class UbuntuWaylandSizerExtension extends Extension {
             window.move_resize_frame(true, target.x, target.y, target.width, target.height);
             this._rememberCenterCyclePreset(presetName);
             this._debugLog(`action: applied preset ${presetName}: ${target.x},${target.y} ${target.width}x${target.height}`);
+            this._showPresetFeedbackOverlay(presetName, target);
             this._schedulePostResizeCorrection(window, presetName, context.workArea, target);
         } catch (error) {
             console.error(`${LOG_PREFIX} action: move_resize_frame failed for ${presetName}: ${this._formatError(error)}`);
@@ -1092,6 +1103,117 @@ export default class UbuntuWaylandSizerExtension extends Extension {
         const workArea = workspace.get_work_area_for_monitor(monitorIndex);
         const frameRect = window.get_frame_rect();
         return { monitorIndex, workspace, workArea, frameRect };
+    }
+
+    _showPresetFeedbackOverlay(presetName, target) {
+        const definition = PRESET_DEFINITIONS[presetName];
+        if (!definition || !target)
+            return;
+
+        const overlay = this._ensurePresetFeedbackOverlay();
+        if (!overlay)
+            return;
+
+        this._presetFeedbackTitleLabel.set_text(definition.label ?? presetName);
+        this._presetFeedbackSizeLabel.set_text(`${target.width} × ${target.height}`);
+        this._positionPresetFeedbackOverlay(overlay);
+        overlay.opacity = 255;
+        overlay.show();
+        this._resetPresetFeedbackTimeout();
+    }
+
+    _ensurePresetFeedbackOverlay() {
+        if (this._presetFeedbackOverlay)
+            return this._presetFeedbackOverlay;
+
+        try {
+            const overlay = new St.BoxLayout({
+                vertical: true,
+                style: 'spacing: 2px; min-width: 220px; padding: 12px 18px; border-radius: 12px; background-color: rgba(0,0,0,0.72); color: white; text-align: center;',
+            });
+            this._presetFeedbackTitleLabel = new St.Label({
+                text: '',
+                x_align: Clutter.ActorAlign.CENTER,
+                style: 'font-size: 18px; font-weight: bold; text-align: center;',
+            });
+            this._presetFeedbackSizeLabel = new St.Label({
+                text: '',
+                x_align: Clutter.ActorAlign.CENTER,
+                style: 'font-size: 14px; text-align: center;',
+            });
+            overlay.add_child(this._presetFeedbackTitleLabel);
+            overlay.add_child(this._presetFeedbackSizeLabel);
+            overlay.hide();
+            Main.uiGroup.add_child(overlay);
+            this._presetFeedbackOverlay = overlay;
+            return overlay;
+        } catch (error) {
+            console.error(`${LOG_PREFIX} feedback: failed to create preset overlay: ${this._formatError(error)}`);
+            this._presetFeedbackOverlay = null;
+            this._presetFeedbackTitleLabel = null;
+            this._presetFeedbackSizeLabel = null;
+            return null;
+        }
+    }
+
+    _positionPresetFeedbackOverlay(overlay) {
+        try {
+            const monitor = Main.layoutManager?.primaryMonitor ?? { x: 0, y: 0, width: global.stage.width, height: global.stage.height };
+            const [, naturalWidth] = overlay.get_preferred_width(-1);
+            const [, naturalHeight] = overlay.get_preferred_height(-1);
+            const width = Math.max(220, naturalWidth);
+            const height = Math.max(56, naturalHeight);
+            const x = monitor.x + Math.floor((monitor.width - width) / 2);
+            const y = monitor.y + Math.floor((monitor.height - height) * 0.22);
+            overlay.set_position(x, y);
+        } catch (error) {
+            this._debugLog(`feedback: failed to position preset overlay: ${this._formatError(error)}`);
+        }
+    }
+
+    _resetPresetFeedbackTimeout() {
+        this._clearPresetFeedbackTimeout();
+        const sourceId = GLib.timeout_add(GLib.PRIORITY_DEFAULT, PRESET_FEEDBACK_OVERLAY_DURATION_MS, () => {
+            this._pendingTimeoutIds = this._pendingTimeoutIds.filter(id => id !== sourceId);
+            this._presetFeedbackTimeoutId = 0;
+            this._presetFeedbackOverlay?.hide();
+            return GLib.SOURCE_REMOVE;
+        });
+
+        this._presetFeedbackTimeoutId = sourceId;
+        this._pendingTimeoutIds.push(sourceId);
+    }
+
+    _clearPresetFeedbackTimeout() {
+        if (!this._presetFeedbackTimeoutId)
+            return;
+
+        try {
+            GLib.source_remove(this._presetFeedbackTimeoutId);
+        } catch (error) {
+            this._debugLog(`feedback: failed to remove overlay timeout: ${this._formatError(error)}`);
+        }
+
+        this._pendingTimeoutIds = this._pendingTimeoutIds.filter(id => id !== this._presetFeedbackTimeoutId);
+        this._presetFeedbackTimeoutId = 0;
+    }
+
+    _destroyPresetFeedbackOverlay(reason) {
+        this._clearPresetFeedbackTimeout();
+
+        if (!this._presetFeedbackOverlay)
+            return;
+
+        try {
+            this._presetFeedbackOverlay.destroy();
+            this._debugLog(`feedback: destroyed preset overlay (${reason})`);
+        } catch (error) {
+            this._debugLog(`feedback: preset overlay already destroyed/disposed (${reason})`);
+        }
+
+        this._presetFeedbackOverlay = null;
+        this._presetFeedbackTitleLabel = null;
+        this._presetFeedbackSizeLabel = null;
     }
 
     _schedulePostResizeCorrection(window, presetName, workArea, target) {
