@@ -282,7 +282,7 @@ class PresetPopupDialog extends ModalDialog.ModalDialog {
         box.add_child(new St.Label({ text: 'Focused Window', style: 'font-weight: bold;' }));
         box.add_child(new St.Label({ text: `Current preset: ${currentPresetLabel}`, style: 'color: #3584e4; font-weight: bold;' }));
         const displayInfo = this._extension._getDisplayInfoForMonitor(monitorIndex);
-        box.add_child(new St.Label({ text: `Display ${displayInfo.displayNumber} · ${frameRect.width}x${frameRect.height} · frame ${frameRect.x},${frameRect.y}` }));
+        box.add_child(new St.Label({ text: `Display ${displayInfo.displayNumber} · ${displayInfo.label} · ${frameRect.width}x${frameRect.height} · frame ${frameRect.x},${frameRect.y}` }));
         box.add_child(new St.Label({ text: `Workarea ${workArea.x},${workArea.y} ${workArea.width}x${workArea.height} · relative ${relativeX},${relativeY}` }));
         return box;
     }
@@ -956,9 +956,9 @@ export default class UbuntuWaylandSizerExtension extends Extension {
             try {
                 const workArea = workspace.get_work_area_for_monitor(monitorIndex);
                 const monitor = monitors[monitorIndex] ?? {};
-                const label = this._extractMonitorLabel(monitor, monitorIndex);
                 const screenGeometry = this._getMonitorGeometry(monitor, workArea);
                 const displayNumber = monitorOrder.indexOf(monitorIndex) + 1;
+                const label = this._formatUserFacingDisplayLabel(displayNumber);
                 infos.push({ monitorIndex, displayNumber, label, workArea, screenGeometry, orientation: this._getOrientation(screenGeometry.width, screenGeometry.height) });
             } catch (error) {
                 this._debugLog(`display: failed to inspect monitor ${monitorIndex}: ${this._formatError(error)}`);
@@ -1018,11 +1018,19 @@ export default class UbuntuWaylandSizerExtension extends Extension {
         return this._getDisplayInfos().find(display => display.monitorIndex === monitorIndex) ?? {
             monitorIndex,
             displayNumber: monitorIndex + 1,
-            label: `Display ${monitorIndex + 1}`,
+            label: this._formatUserFacingDisplayLabel(monitorIndex + 1),
             workArea: { width: 1, height: 1 },
             screenGeometry: { x: 0, y: 0, width: 1, height: 1 },
             orientation: 'landscape',
         };
+    }
+
+    _formatUserFacingDisplayLabel(displayNumber) {
+        if (displayNumber === 1)
+            return 'Primary Display';
+        if (displayNumber === 2)
+            return 'Secondary Display';
+        return `Display ${displayNumber}`;
     }
 
     _extractMonitorLabel(monitor, monitorIndex) {
