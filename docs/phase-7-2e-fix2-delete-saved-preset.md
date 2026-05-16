@@ -176,6 +176,55 @@ MVP should prefer stability over complex live-refresh behavior.
 
 ---
 
+# Validation Results
+
+## Manual validation — PASS
+
+Observed behavior:
+
+- each saved preset row shows a `Delete` button
+- clicking `Delete` opens a confirmation dialog
+- confirmation dialog displays Unicode names correctly
+- Cancel closes the confirmation path without deleting
+- Delete removes only the selected preset
+- deleted presets disappear after reopening the popup
+- remaining saved presets still apply correctly
+- built-in presets are unaffected
+
+Validated Unicode deletion examples:
+
+```text
+작업노트
+メモ-副画面
+```
+
+Validated normal ASCII deletion examples:
+
+```text
+aaa
+preset-20260516-135942
+preset-20260516-140008
+```
+
+Representative logs:
+
+```text
+custom-preset: delete dialog requested id=custom-1778910347-8675, name=작업노트
+custom-preset: deleted preset id=custom-1778910347-8675, name=작업노트
+custom-preset: delete dialog requested id=custom-1778898133-69589, name=texteditor
+custom-preset: deleted preset id=custom-1778898133-69589, name=texteditor
+custom-preset: delete dialog requested id=custom-1778910329-69494, name=メモ-副画面
+custom-preset: deleted preset id=custom-1778910329-69494, name=メモ-副画面
+```
+
+Current conclusion:
+
+```text
+Phase 7.2e-fix2 single saved preset delete: PASS
+```
+
+---
+
 # Acceptance Criteria
 
 Phase 7.2e-fix2 passes when:
@@ -197,5 +246,5 @@ Phase 7.2e-fix2 passes when:
 ```text
 Phase 7.2e-fix1 monitor affinity: VALIDATED
 Phase 7.2e-fix1 Unicode names: VALIDATED
-Phase 7.2e-fix2 single saved preset delete: REQUIRED
+Phase 7.2e-fix2 single saved preset delete: PASS
 ```
