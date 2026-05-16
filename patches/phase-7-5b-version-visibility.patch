@@ -22,7 +22,7 @@ index f248f7c..0000000 100644
 +            return '';
 +
 +        const versionText = String(version).trim();
-+        return versionText ? `v${versionText}` : '';
++        return versionText ? `v${versionText}.0` : '';
 +    }
 +
 +    _getPopupTitle() {
