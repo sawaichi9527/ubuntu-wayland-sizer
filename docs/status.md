@@ -221,7 +221,7 @@ Popup title: Ubuntu Wayland Sizer
 Focused Window section                       Log control section
 Current Displays section
 Center Presets
-Window Positions
+Position Presets
 Saved Presets
 Actions
 ```
@@ -306,12 +306,12 @@ Phase 7.4a preset library expansion: PASS / CURRENT BASELINE
 Phase 7.5a roadmap and guardrails: PASS
 Phase 7.5b version visibility: PASS
 Phase 7.5c deployment docs: PASS
-Phase 7.5d UX wording polish: IN PROGRESS
+Phase 7.5d UX wording polish: PASS
 ```
 
 ## Next Recommended Step
 
-Continue with Phase 7.5d UX wording polish.
+Continue with Phase 7.5e i18n-ready note only.
 
 Recommended Phase 7.5 sequence:
 
