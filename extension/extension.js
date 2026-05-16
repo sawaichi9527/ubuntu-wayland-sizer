@@ -50,12 +50,7 @@ const PRESET_DEFINITIONS = Object.freeze({
     [PRESETS.CENTER_LARGE]: Object.freeze({ id: PRESETS.CENTER_LARGE, type: PRESET_TYPES.FIXED_CENTER, label: 'Large center', size: Object.freeze({ width: 1440, height: 768 }) }),
 });
 
-const CENTER_CYCLE_PRESETS = Object.freeze([
-    PRESETS.CENTER_COMPACT,
-    PRESETS.CENTER,
-    PRESETS.CENTER_LARGE,
-]);
-
+const CENTER_CYCLE_PRESETS = Object.freeze([PRESETS.CENTER_COMPACT, PRESETS.CENTER, PRESETS.CENTER_LARGE]);
 const CYCLE_DIRECTIONS = Object.freeze({ NEXT: 1, PREVIOUS: -1 });
 
 const PRESET_KEYBINDINGS = Object.freeze([
@@ -75,14 +70,8 @@ const CYCLE_KEYBINDINGS = Object.freeze([
 const POPUP_KEYBINDINGS = Object.freeze(['open-preset-popup']);
 
 const POPUP_PRESET_GROUPS = Object.freeze([
-    Object.freeze({
-        title: 'Center Presets',
-        presets: Object.freeze([PRESETS.CENTER_COMPACT, PRESETS.CENTER, PRESETS.CENTER_LARGE]),
-    }),
-    Object.freeze({
-        title: 'Window Positions',
-        presets: Object.freeze([PRESETS.LEFT, PRESETS.RIGHT, PRESETS.FULL]),
-    }),
+    Object.freeze({ title: 'Center Presets', presets: Object.freeze([PRESETS.CENTER_COMPACT, PRESETS.CENTER, PRESETS.CENTER_LARGE]) }),
+    Object.freeze({ title: 'Window Positions', presets: Object.freeze([PRESETS.LEFT, PRESETS.RIGHT, PRESETS.FULL]) }),
 ]);
 
 const SavePresetDialog = GObject.registerClass(
@@ -94,7 +83,7 @@ class SavePresetDialog extends ModalDialog.ModalDialog {
         this._errorLabel = null;
         this._buildLayout(suggestedName);
         this.setButtons([
-            { label: 'Cancel', action: () => this.close() },
+            { label: 'Cancel', action: () => this._cancel() },
             { label: 'Save', action: () => this._save(), default: true },
         ]);
     }
@@ -117,6 +106,11 @@ class SavePresetDialog extends ModalDialog.ModalDialog {
         this.contentLayout.add_child(content);
     }
 
+    _cancel() {
+        this.close();
+        this._extension._reopenPresetPopupAfterDialogDecision('save', 'cancel');
+    }
+
     _save() {
         const rawName = this._entry?.get_text ? this._entry.get_text() : this._entry?.clutter_text?.get_text();
         const result = this._extension._validateCustomPresetName(rawName ?? '');
@@ -130,6 +124,7 @@ class SavePresetDialog extends ModalDialog.ModalDialog {
 
         this.close();
         this._extension._saveFocusedWindowGeometryAsCustomPreset(result.name);
+        this._extension._reopenPresetPopupAfterDialogDecision('save', 'confirm');
     }
 });
 
@@ -157,7 +152,7 @@ class DeletePresetDialog extends ModalDialog.ModalDialog {
 
     _cancel() {
         this.close();
-        this._extension._reopenPresetPopupAfterDeleteDecision('cancel');
+        this._extension._reopenPresetPopupAfterDialogDecision('delete', 'cancel');
     }
 
     _delete() {
@@ -440,17 +435,17 @@ export default class UbuntuWaylandSizerExtension extends Extension {
         }
     }
 
-    _reopenPresetPopupAfterDeleteDecision(reason) {
+    _reopenPresetPopupAfterDialogDecision(dialogName, reason) {
         this._scheduleTimeout(POPUP_REOPEN_DELAY_MS, () => {
             const window = this._isNormalWindow(this._lastPopupWindow) ? this._lastPopupWindow : global.display.get_focus_window();
 
             if (!this._isNormalWindow(window)) {
-                this._debugLog(`popup: delete ${reason} refresh skipped because no normal target window exists`);
+                this._debugLog(`popup: ${dialogName} ${reason} refresh skipped because no normal target window exists`);
                 return;
             }
 
-            this._debugLog(`popup: reopening after saved preset delete ${reason}`);
-            this._showPresetPopupForWindow(window, `delete-${reason}-refresh`);
+            this._debugLog(`popup: reopening after saved preset ${dialogName} ${reason}`);
+            this._showPresetPopupForWindow(window, `${dialogName}-${reason}-refresh`);
         });
     }
 
@@ -554,7 +549,7 @@ export default class UbuntuWaylandSizerExtension extends Extension {
         this._debugLog(`custom-preset: deleted preset id=${targetPreset.id}, name=${targetPreset.name}`);
 
         if (options.reopenPopup)
-            this._reopenPresetPopupAfterDeleteDecision('confirm');
+            this._reopenPresetPopupAfterDialogDecision('delete', 'confirm');
 
         return true;
     }
