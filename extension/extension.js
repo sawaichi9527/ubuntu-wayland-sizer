@@ -10,6 +10,12 @@ import * as Main from 'resource:///org/gnome/shell/ui/main.js';
 import * as ModalDialog from 'resource:///org/gnome/shell/ui/modalDialog.js';
 
 const LOG_PREFIX = '[ubuntu-wayland-sizer]';
+const LOG_LEVELS = Object.freeze({
+    NORMAL: 'NORMAL',
+    DEBUG: 'DEBUG',
+    WARNING: 'WARNING',
+    CRITICAL: 'CRITICAL',
+});
 const POST_UNMAXIMIZE_RESIZE_DELAY_MS = 180;
 const POST_RESIZE_CORRECTION_DELAY_MS = 90;
 const FULL_WORKAREA_TOLERANCE_PX = 2;
@@ -327,7 +333,7 @@ class PresetPopupDialog extends ModalDialog.ModalDialog {
 
 export default class UbuntuWaylandSizerExtension extends Extension {
     enable() {
-        console.log(`${LOG_PREFIX} enable: start`);
+        this._normalLog('enable: start');
 
         try {
             this._settings = this.getSettings();
@@ -363,18 +369,18 @@ export default class UbuntuWaylandSizerExtension extends Extension {
                 this._debugLog(`enable: keybinding registered: ${keybindingName} -> preset-popup`);
             }
 
-            console.log(`${LOG_PREFIX} enabled`);
+            this._normalLog('enabled');
         } catch (error) {
-            console.error(`${LOG_PREFIX} enable failed: ${this._formatError(error)}`);
+            this._criticalLog(`enable failed: ${this._formatError(error)}`);
             this._cleanup();
             throw error;
         }
     }
 
     disable() {
-        console.log(`${LOG_PREFIX} disable: start`);
+        this._normalLog('disable: start');
         this._cleanup();
-        console.log(`${LOG_PREFIX} disabled`);
+        this._normalLog('disabled');
     }
 
     _cleanup() {
@@ -1420,10 +1426,31 @@ export default class UbuntuWaylandSizerExtension extends Extension {
         }
     }
 
+    _log(level, message) {
+        const formatted = `${LOG_PREFIX}[${level}] ${message}`;
+
+        if (level === LOG_LEVELS.CRITICAL)
+            console.error(formatted);
+        else
+            console.log(formatted);
+    }
+
+    _normalLog(message) {
+        this._log(LOG_LEVELS.NORMAL, message);
+    }
+
+    _warningLog(message) {
+        this._log(LOG_LEVELS.WARNING, message);
+    }
+
+    _criticalLog(message) {
+        this._log(LOG_LEVELS.CRITICAL, message);
+    }
+
     _debugLog(message) {
         this._debugLogging = this._readDebugLogging();
         if (this._debugLogging)
-            console.log(`${LOG_PREFIX} ${message}`);
+            this._log(LOG_LEVELS.DEBUG, message);
     }
 
     _formatError(error) {
