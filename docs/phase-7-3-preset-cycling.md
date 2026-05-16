@@ -97,6 +97,71 @@ Expected next preset: Large center 1440x768
 
 ---
 
+## Phase 7.3a Implementation Fixes
+
+Initial code review found two cycle-state cases that should be fixed before manual validation is treated as authoritative.
+
+### 1. Unknown backward cycle start
+
+When the current geometry is not recognized as a center-cycle preset and no valid remembered center-cycle state exists:
+
+```text
+Super+Alt+. should start at Compact center
+Super+Alt+, should start at Large center
+```
+
+Implementation requirement:
+
+```text
+If currentIndex == UNKNOWN_CYCLE_INDEX:
+  next direction     -> index 0
+  previous direction -> last index
+```
+
+Do not derive the unknown backward start by wrapping `UNKNOWN_CYCLE_INDEX + direction`, because that can skip the expected Large center start.
+
+### 2. Stale remembered cycle state after non-center/custom preset
+
+Applying a non-center geometry should reset the remembered center-cycle index unless the currently focused frame can be inferred as one of the center-cycle presets.
+
+This includes:
+
+```text
+Left half
+Right half
+Full workarea
+Saved custom preset
+```
+
+Reason:
+
+```text
+Saved preset apply -> cycle next/previous
+```
+
+should behave as an unknown/non-center geometry start, not as a continuation from a previously remembered center preset.
+
+Suggested implementation shape:
+
+```js
+_forgetCenterCyclePreset(reason) {
+    if (this._centerCycleIndex === UNKNOWN_CYCLE_INDEX)
+        return;
+    this._debugLog(`action: forgot center cycle index (${reason})`);
+    this._centerCycleIndex = UNKNOWN_CYCLE_INDEX;
+}
+```
+
+Then:
+
+```text
+center-cycle preset applied -> remember index
+non-center built-in applied -> forget index
+custom preset applied       -> forget index
+```
+
+---
+
 ## Validation Matrix
 
 Minimum apps:
@@ -122,8 +187,11 @@ Minimum flows:
 ```text
 Super+Alt+. repeated forward cycle
 Super+Alt+, repeated backward cycle
+Unknown geometry -> Super+Alt+. starts Compact center
+Unknown geometry -> Super+Alt+, starts Large center
 Direct C then cycle next
 Direct J/K then cycle next/previous
+Direct H/L/F then cycle next/previous
 Popup selection then cycle next/previous
 Saved preset apply then center cycle
 Full workarea then center cycle
@@ -150,8 +218,11 @@ Phase 7.3 passes when:
 
 - `Super+Alt+.` cycles compact -> custom -> large -> compact.
 - `Super+Alt+,` cycles large -> custom -> compact -> large.
+- Unknown/non-center geometry + `Super+Alt+.` starts at Compact center.
+- Unknown/non-center geometry + `Super+Alt+,` starts at Large center.
 - Cycling works after manually applying `Super+Alt+C`.
 - Cycling works after manually applying `Super+Alt+J` and `Super+Alt+K`.
+- Cycling works after manually applying `Super+Alt+H`, `Super+Alt+L`, and `Super+Alt+F`.
 - Cycling works after choosing center presets from the popup.
 - Cycling works after applying a saved preset.
 - Cycling works after breaking out from full-workarea state.
@@ -188,5 +259,6 @@ Expected status:
 
 ```text
 Phase 7.2f popup/custom-preset usability: PASS
-Phase 7.3 preset cycling validation: READY
+Phase 7.3 preset cycling validation: IN PROGRESS
+Phase 7.3a cycle-state implementation fix: REQUIRED
 ```
