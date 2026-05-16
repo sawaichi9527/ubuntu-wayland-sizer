@@ -28,12 +28,12 @@ while keeping:
 
 ## Current Preset Baseline
 
-Current built-in presets:
+Current built-in presets before Phase 7.4a:
 
 ```text
 Center Presets
 - Compact Center -- 800x600
-- Center -- configured center-width x center-height
+- configurable center-width x center-height
 - Large Center -- 1440x768
 
 Window Positions
@@ -42,10 +42,10 @@ Window Positions
 - Full workarea
 ```
 
-Current center-cycle order:
+Current center-cycle order before Phase 7.4a:
 
 ```text
-Compact Center -> Center -> Large Center -> Compact Center
+Compact Center -> configured center -> Large Center -> Compact Center
 ```
 
 Current popup baseline:
@@ -63,38 +63,40 @@ Actions
 
 ## Important Semantics
 
-Phase 7.4a must keep these concepts separate:
+Phase 7.4a separates these concepts:
 
 ```text
 Center Presets
-  Built-in center-position presets shown in the Center Presets popup group.
+  Standard built-in center-position presets shown in the Center Presets popup group.
 
 Saved Presets
   User-saved relative geometry presets stored in custom-presets-json.
-
-Configured Center
-  The existing center preset controlled by center-width / center-height settings.
 ```
 
-The existing configurable center preset remains part of the Center Presets group, but its label should be `Center`, not `Custom Center`, to avoid confusion with Saved Presets.
+Phase 7.4a no longer treats the configurable `center-width` / `center-height` value as a Center Presets library entry.
 
-In other words:
+The standardized library entry that replaces the old configurable center slot is:
 
 ```text
-Center
+Wide-medium Center -- 1152x864
 ```
 
-means:
+If a user needs another custom center size, that requirement should use:
 
 ```text
-center-position preset using configured size
+Saved Presets
 ```
 
-not:
+not another configurable built-in Center Presets entry.
+
+This keeps the architecture simple:
 
 ```text
-saved custom preset
+standard built-in library sizes -> Center Presets
+user-defined/special sizes      -> Saved Presets
 ```
+
+The existing schema keys may remain for compatibility, but they should not define the Phase 7.4a popup/cycle library baseline.
 
 ---
 
@@ -104,6 +106,7 @@ Included:
 
 ```text
 - Expand built-in Center Presets
+- Standardize Center Presets dimensions
 - Formalize popup preset grouping structure
 - Improve preset labels so popup rows include name and size
 - Keep popup readable as preset count grows
@@ -120,6 +123,7 @@ Excluded:
 - Auto-tiling behavior
 - Background monitor/layout daemon
 - Massive popup redesign
+- Additional configurable center preset entry
 ```
 
 ---
@@ -129,12 +133,12 @@ Excluded:
 Phase 7.4a Center Presets group:
 
 ```text
-Tiny Center       -- 640x480
-Compact Center    -- 800x600
-Medium Center     -- 1024x768
-Center            -- configured center-width x center-height
-Large Center      -- 1440x768
-Ultra-wide Center -- 1600x900
+Tiny Center         -- 640x480
+Compact Center      -- 800x600
+Medium Center       -- 1024x768
+Wide-medium Center  -- 1152x864
+Large Center        -- 1280x960
+Ultra-wide Center   -- 1600x900
 ```
 
 Popup labels should use the current popup separator style between name and size:
@@ -143,14 +147,12 @@ Popup labels should use the current popup separator style between name and size:
 Tiny Center -- 640x480
 Compact Center -- 800x600
 Medium Center -- 1024x768
-Center -- 1200x854
-Large Center -- 1440x768
+Wide-medium Center -- 1152x864
+Large Center -- 1280x960
 Ultra-wide Center -- 1600x900
 ```
 
 In the examples above, `--` represents the same long separator style currently used by the popup labels, not a shell option or command syntax.
-
-Exact dimensions may later be tuned based on portrait-monitor usability and mixed-scaling validation.
 
 ---
 
@@ -169,18 +171,18 @@ Quarter presets
 Saved Presets
 ```
 
-Center-cycle should remain a curated sequence across center-position presets.
+Center-cycle should remain a curated sequence across standard center-position presets.
 
 Recommended first 7.4a cycle order:
 
 ```text
-Tiny Center -> Compact Center -> Medium Center -> Center -> Large Center -> Ultra-wide Center -> Tiny Center
+Tiny Center -> Compact Center -> Medium Center -> Wide-medium Center -> Large Center -> Ultra-wide Center -> Tiny Center
 ```
 
 Reverse direction must also wrap:
 
 ```text
-Tiny Center -> Ultra-wide Center -> Large Center -> Center -> Medium Center -> Compact Center -> Tiny Center
+Tiny Center -> Ultra-wide Center -> Large Center -> Wide-medium Center -> Medium Center -> Compact Center -> Tiny Center
 ```
 
 Required behavior:
@@ -297,6 +299,7 @@ Phase 7.4a passes when:
 
 ```text
 - Center Presets show name and size in popup labels
+- Center Presets use standardized library dimensions
 - center-cycle moves only through Center Presets
 - center-cycle wraps in both directions
 - popup remains readable with larger preset count
@@ -321,6 +324,7 @@ Phase 7.4a intentionally does NOT introduce:
 - multi-window layouts
 - session restore engine
 - cloud/profile sync
+- second configurable center preset path
 ```
 
 The extension should remain:
@@ -339,11 +343,12 @@ predictable
 Recommended implementation order:
 
 ```text
-1. Rename visible configurable center label from Custom Center to Center
-2. Add Tiny, Medium, and Ultra-wide Center definitions
+1. Replace the old configurable center popup entry with Wide-medium Center
+2. Standardize center preset definitions
 3. Expand Center Presets popup group
 4. Expand center-cycle to all Center Presets with circular wraparound
 5. Validate popup readability and cycling behavior
+6. Route ad-hoc custom sizes through Saved Presets
 ```
 
 Do not redesign the popup before validating the expanded Center Presets library baseline.
