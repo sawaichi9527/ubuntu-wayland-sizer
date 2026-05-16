@@ -19,6 +19,8 @@ Included:
 - display/workarea wording review
 - runtime log-control wording review
 - capitalization and style consistency
+- extension metadata description wording
+- Extension Manager local/dev display behavior notes
 - documentation of preferred terminology
 ```
 
@@ -34,6 +36,7 @@ Excluded:
 - D-Bus service
 - panel indicator
 - i18n/gettext integration
+- extensions.gnome.org publishing flow
 ```
 
 ## Guardrails
@@ -55,6 +58,77 @@ Do not modify:
 Do not rename internal preset IDs or GSettings keys during wording polish.
 
 Internal names are implementation details and may remain stable even if UI wording improves.
+
+## Extension Manager Display Notes
+
+GNOME Extension Manager / Extensions app reads `extension/metadata.json` for local extension list display.
+
+Phase 7.5d updates the metadata description from the early PoC-style wording:
+
+```text
+Minimal GNOME Shell Extension baseline for Wayland window sizing experiments.
+```
+
+to a more user-facing description:
+
+```text
+Resize and position the focused window with Sizer-style presets for GNOME Shell on Ubuntu Wayland.
+```
+
+### Version display
+
+Extension Manager displays the integer metadata version:
+
+```text
+1
+```
+
+This is expected for the current development baseline.
+
+The popup title formats the same metadata version as:
+
+```text
+Ubuntu Wayland Sizer · v1.0
+```
+
+This difference is intentional:
+
+```text
+- metadata.json keeps GNOME Shell extension version as an integer
+- popup UI formats that integer as vN.0 for release-oriented visibility
+```
+
+### Detail-page error for local/dev extension
+
+For an unpublished local development extension, clicking:
+
+```text
+View Details
+```
+
+may open an error page such as:
+
+```text
+發生錯誤
+無擴充功能詳細資訊
+```
+
+This is currently treated as non-blocking and expected for the local/dev baseline.
+
+Reason:
+
+```text
+The extension is installed locally and is not published on extensions.gnome.org, so Extension Manager may not have an online detail page to display.
+```
+
+This does not indicate that Ubuntu Wayland Sizer failed to load or that runtime behavior is broken.
+
+Use the following checks instead:
+
+```bash
+gnome-extensions info ubuntu-wayland-sizer@sawaichi9527
+journalctl --user -f -o cat /usr/bin/gnome-shell | grep ubuntu-wayland-sizer
+```
 
 ## Current Popup Wording Baseline
 
@@ -269,6 +343,8 @@ Phase 7.5d passes when:
 
 ```text
 - UX wording policy is documented
+- Extension Manager local/dev display behavior is documented
+- metadata description is user-facing
 - any runtime wording change is limited to low-risk popup labels
 - no geometry behavior changes are introduced
 - no schema changes are introduced
