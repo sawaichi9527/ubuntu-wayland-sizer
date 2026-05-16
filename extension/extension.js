@@ -37,8 +37,11 @@ const PRESETS = Object.freeze({
     RIGHT: 'right',
     FULL: 'full',
     CENTER: 'center',
+    CENTER_TINY: 'center-tiny',
     CENTER_COMPACT: 'center-compact',
+    CENTER_MEDIUM: 'center-medium',
     CENTER_LARGE: 'center-large',
+    CENTER_ULTRAWIDE: 'center-ultrawide',
 });
 
 const PRESET_TYPES = Object.freeze({
@@ -53,12 +56,22 @@ const PRESET_DEFINITIONS = Object.freeze({
     [PRESETS.LEFT]: Object.freeze({ id: PRESETS.LEFT, type: PRESET_TYPES.LEFT_HALF, label: 'Left half' }),
     [PRESETS.RIGHT]: Object.freeze({ id: PRESETS.RIGHT, type: PRESET_TYPES.RIGHT_HALF, label: 'Right half' }),
     [PRESETS.FULL]: Object.freeze({ id: PRESETS.FULL, type: PRESET_TYPES.FULL_WORKAREA, label: 'Full workarea' }),
-    [PRESETS.CENTER]: Object.freeze({ id: PRESETS.CENTER, type: PRESET_TYPES.CUSTOM_CENTER, label: 'Custom center' }),
-    [PRESETS.CENTER_COMPACT]: Object.freeze({ id: PRESETS.CENTER_COMPACT, type: PRESET_TYPES.FIXED_CENTER, label: 'Compact center', size: Object.freeze({ width: 800, height: 600 }) }),
-    [PRESETS.CENTER_LARGE]: Object.freeze({ id: PRESETS.CENTER_LARGE, type: PRESET_TYPES.FIXED_CENTER, label: 'Large center', size: Object.freeze({ width: 1440, height: 768 }) }),
+    [PRESETS.CENTER]: Object.freeze({ id: PRESETS.CENTER, type: PRESET_TYPES.FIXED_CENTER, label: 'Wide-medium Center', size: Object.freeze({ width: 1152, height: 864 }) }),
+    [PRESETS.CENTER_TINY]: Object.freeze({ id: PRESETS.CENTER_TINY, type: PRESET_TYPES.FIXED_CENTER, label: 'Tiny Center', size: Object.freeze({ width: 640, height: 480 }) }),
+    [PRESETS.CENTER_COMPACT]: Object.freeze({ id: PRESETS.CENTER_COMPACT, type: PRESET_TYPES.FIXED_CENTER, label: 'Compact Center', size: Object.freeze({ width: 800, height: 600 }) }),
+    [PRESETS.CENTER_MEDIUM]: Object.freeze({ id: PRESETS.CENTER_MEDIUM, type: PRESET_TYPES.FIXED_CENTER, label: 'Medium Center', size: Object.freeze({ width: 1024, height: 768 }) }),
+    [PRESETS.CENTER_LARGE]: Object.freeze({ id: PRESETS.CENTER_LARGE, type: PRESET_TYPES.FIXED_CENTER, label: 'Large Center', size: Object.freeze({ width: 1280, height: 960 }) }),
+    [PRESETS.CENTER_ULTRAWIDE]: Object.freeze({ id: PRESETS.CENTER_ULTRAWIDE, type: PRESET_TYPES.FIXED_CENTER, label: 'Ultra-wide Center', size: Object.freeze({ width: 1600, height: 900 }) }),
 });
 
-const CENTER_CYCLE_PRESETS = Object.freeze([PRESETS.CENTER_COMPACT, PRESETS.CENTER, PRESETS.CENTER_LARGE]);
+const CENTER_CYCLE_PRESETS = Object.freeze([
+    PRESETS.CENTER_TINY,
+    PRESETS.CENTER_COMPACT,
+    PRESETS.CENTER_MEDIUM,
+    PRESETS.CENTER,
+    PRESETS.CENTER_LARGE,
+    PRESETS.CENTER_ULTRAWIDE,
+]);
 const CYCLE_DIRECTIONS = Object.freeze({ NEXT: 1, PREVIOUS: -1 });
 
 const PRESET_KEYBINDINGS = Object.freeze([
@@ -78,7 +91,7 @@ const CYCLE_KEYBINDINGS = Object.freeze([
 const POPUP_KEYBINDINGS = Object.freeze(['open-preset-popup']);
 
 const POPUP_PRESET_GROUPS = Object.freeze([
-    Object.freeze({ title: 'Center Presets', presets: Object.freeze([PRESETS.CENTER_COMPACT, PRESETS.CENTER, PRESETS.CENTER_LARGE]) }),
+    Object.freeze({ title: 'Center Presets', presets: CENTER_CYCLE_PRESETS }),
     Object.freeze({ title: 'Window Positions', presets: Object.freeze([PRESETS.LEFT, PRESETS.RIGHT, PRESETS.FULL]) }),
 ]);
 
@@ -229,11 +242,20 @@ class PresetPopupDialog extends ModalDialog.ModalDialog {
         const debugEnabled = this._extension._readDebugLogging();
         const box = new St.BoxLayout({ vertical: true, style: 'spacing: 6px; padding: 8px 10px; border-radius: 8px; background-color: rgba(255,255,255,0.06); min-width: 170px;' });
 
-        box.add_child(new St.Label({
-            text: `Log: ${debugEnabled ? 'Debug' : 'Normal'}`,
+        const logStatusRow = new St.BoxLayout({
+            vertical: false,
             x_align: Clutter.ActorAlign.CENTER,
+            style: 'spacing: 4px;',
+        });
+        logStatusRow.add_child(new St.Label({
+            text: 'Log:',
             style: 'font-weight: bold;',
         }));
+        logStatusRow.add_child(new St.Label({
+            text: debugEnabled ? 'Debug' : 'Normal',
+            style: `font-weight: bold; color: ${debugEnabled ? '#ff6b6b' : '#3584e4'};`,
+        }));
+        box.add_child(logStatusRow);
 
         const button = new St.Button({
             label: debugEnabled ? 'Switch to Normal' : 'Switch to Debug',
@@ -259,7 +281,8 @@ class PresetPopupDialog extends ModalDialog.ModalDialog {
         const box = new St.BoxLayout({ vertical: true, style: 'spacing: 2px; padding: 8px 10px; border-radius: 8px; background-color: rgba(255,255,255,0.08);' });
         box.add_child(new St.Label({ text: 'Focused Window', style: 'font-weight: bold;' }));
         box.add_child(new St.Label({ text: `Current preset: ${currentPresetLabel}`, style: 'color: #3584e4; font-weight: bold;' }));
-        box.add_child(new St.Label({ text: `Display ${monitorIndex + 1} · ${frameRect.width}x${frameRect.height} · frame ${frameRect.x},${frameRect.y}` }));
+        const displayInfo = this._extension._getDisplayInfoForMonitor(monitorIndex);
+        box.add_child(new St.Label({ text: `Display ${displayInfo.displayNumber} · ${displayInfo.label} · ${frameRect.width}x${frameRect.height} · frame ${frameRect.x},${frameRect.y}` }));
         box.add_child(new St.Label({ text: `Workarea ${workArea.x},${workArea.y} ${workArea.width}x${workArea.height} · relative ${relativeX},${relativeY}` }));
         return box;
     }
@@ -268,8 +291,8 @@ class PresetPopupDialog extends ModalDialog.ModalDialog {
         const box = new St.BoxLayout({ vertical: true, style: 'spacing: 2px; padding: 8px 10px; border-radius: 8px; background-color: rgba(255,255,255,0.06);' });
         box.add_child(new St.Label({ text: 'Current Displays', style: 'font-weight: bold;' }));
 
-        for (const display of this._extension._getDisplayInfos())
-            box.add_child(new St.Label({ text: `${display.displayNumber}. ${display.label} · ${this._extension._formatOrientation(display.orientation)} · ${display.workArea.width}x${display.workArea.height}` }));
+        for (const display of this._extension._getDisplayInfos().sort((a, b) => a.displayNumber - b.displayNumber))
+            box.add_child(new St.Label({ text: `${display.displayNumber}. ${display.label} · ${this._extension._formatOrientation(display.orientation)} · screen ${display.screenGeometry.width}x${display.screenGeometry.height} · workarea ${display.workArea.width}x${display.workArea.height}` }));
 
         return box;
     }
@@ -358,10 +381,7 @@ class PresetPopupDialog extends ModalDialog.ModalDialog {
             return `${definition.label} — current workarea right half`;
         case PRESET_TYPES.FULL_WORKAREA:
             return `${definition.label} — current workarea`;
-        case PRESET_TYPES.CUSTOM_CENTER: {
-            const size = this._extension._readCenterSize();
-            return `${definition.label} — ${size.width}x${size.height}`;
-        }
+        case PRESET_TYPES.CUSTOM_CENTER:
         case PRESET_TYPES.FIXED_CENTER:
             return `${definition.label} — ${definition.size.width}x${definition.size.height}`;
         default:
@@ -912,9 +932,7 @@ export default class UbuntuWaylandSizerExtension extends Extension {
             PRESETS.LEFT,
             PRESETS.RIGHT,
             PRESETS.FULL,
-            PRESETS.CENTER_COMPACT,
-            PRESETS.CENTER,
-            PRESETS.CENTER_LARGE,
+            ...CENTER_CYCLE_PRESETS,
         ];
 
         for (const presetName of orderedPresetNames) {
@@ -930,14 +948,18 @@ export default class UbuntuWaylandSizerExtension extends Extension {
         const workspace = global.workspace_manager.get_active_workspace();
         const monitors = Main.layoutManager?.monitors ?? [];
         const count = monitors.length || global.display.get_n_monitors?.() || 1;
+        const primaryMonitorIndex = this._getPrimaryMonitorIndex();
+        const monitorOrder = this._buildUserFacingMonitorOrder(count, primaryMonitorIndex);
         const infos = [];
 
         for (let monitorIndex = 0; monitorIndex < count; monitorIndex++) {
             try {
                 const workArea = workspace.get_work_area_for_monitor(monitorIndex);
                 const monitor = monitors[monitorIndex] ?? {};
-                const label = this._extractMonitorLabel(monitor, monitorIndex);
-                infos.push({ monitorIndex, displayNumber: monitorIndex + 1, label, workArea, orientation: this._getOrientation(workArea.width, workArea.height) });
+                const screenGeometry = this._getMonitorGeometry(monitor, workArea);
+                const displayNumber = monitorOrder.indexOf(monitorIndex) + 1;
+                const label = this._formatUserFacingDisplayLabel(displayNumber);
+                infos.push({ monitorIndex, displayNumber, label, workArea, screenGeometry, orientation: this._getOrientation(screenGeometry.width, screenGeometry.height) });
             } catch (error) {
                 this._debugLog(`display: failed to inspect monitor ${monitorIndex}: ${this._formatError(error)}`);
             }
@@ -948,18 +970,67 @@ export default class UbuntuWaylandSizerExtension extends Extension {
             displayNumber: 1,
             label: 'Display 1',
             workArea: workspace.get_work_area_for_monitor(0),
+            screenGeometry: workspace.get_work_area_for_monitor(0),
             orientation: 'landscape',
         }];
+    }
+
+    _getPrimaryMonitorIndex() {
+        const primaryIndex = Number.parseInt(Main.layoutManager?.primaryIndex, 10);
+        if (Number.isFinite(primaryIndex) && primaryIndex >= 0)
+            return primaryIndex;
+
+        const primaryMonitor = Main.layoutManager?.primaryMonitor;
+        const monitors = Main.layoutManager?.monitors ?? [];
+        const byObject = monitors.indexOf(primaryMonitor);
+        if (byObject >= 0)
+            return byObject;
+
+        return 0;
+    }
+
+    _buildUserFacingMonitorOrder(count, primaryMonitorIndex) {
+        const order = [];
+        if (primaryMonitorIndex >= 0 && primaryMonitorIndex < count)
+            order.push(primaryMonitorIndex);
+
+        for (let monitorIndex = 0; monitorIndex < count; monitorIndex++) {
+            if (!order.includes(monitorIndex))
+                order.push(monitorIndex);
+        }
+
+        return order;
+    }
+
+    _getMonitorGeometry(monitor, workArea) {
+        const x = Number.parseInt(monitor?.x, 10);
+        const y = Number.parseInt(monitor?.y, 10);
+        const width = Number.parseInt(monitor?.width, 10);
+        const height = Number.parseInt(monitor?.height, 10);
+
+        if ([x, y, width, height].every(Number.isFinite) && width > 0 && height > 0)
+            return { x, y, width, height };
+
+        return { x: workArea.x, y: workArea.y, width: workArea.width, height: workArea.height };
     }
 
     _getDisplayInfoForMonitor(monitorIndex) {
         return this._getDisplayInfos().find(display => display.monitorIndex === monitorIndex) ?? {
             monitorIndex,
             displayNumber: monitorIndex + 1,
-            label: `Display ${monitorIndex + 1}`,
+            label: this._formatUserFacingDisplayLabel(monitorIndex + 1),
             workArea: { width: 1, height: 1 },
+            screenGeometry: { x: 0, y: 0, width: 1, height: 1 },
             orientation: 'landscape',
         };
+    }
+
+    _formatUserFacingDisplayLabel(displayNumber) {
+        if (displayNumber === 1)
+            return 'Primary Display';
+        if (displayNumber === 2)
+            return 'Secondary Display';
+        return `Display ${displayNumber}`;
     }
 
     _extractMonitorLabel(monitor, monitorIndex) {
@@ -1262,7 +1333,9 @@ export default class UbuntuWaylandSizerExtension extends Extension {
     }
 
     _schedulePostResizeCorrection(window, presetName, workArea, target) {
-        if (![PRESETS.LEFT, PRESETS.RIGHT, PRESETS.CENTER, PRESETS.CENTER_COMPACT, PRESETS.CENTER_LARGE].includes(presetName))
+        const correctionTypes = [PRESET_TYPES.LEFT_HALF, PRESET_TYPES.RIGHT_HALF, PRESET_TYPES.CUSTOM_CENTER, PRESET_TYPES.FIXED_CENTER];
+        const definition = PRESET_DEFINITIONS[presetName];
+        if (!correctionTypes.includes(definition?.type))
             return;
 
         this._scheduleTimeout(POST_RESIZE_CORRECTION_DELAY_MS, () => {
@@ -1346,7 +1419,6 @@ export default class UbuntuWaylandSizerExtension extends Extension {
         case PRESET_TYPES.FULL_WORKAREA:
             return this._clampGeometryToWorkArea({ x: workArea.x, y: workArea.y, width: workArea.width, height: workArea.height }, workArea);
         case PRESET_TYPES.CUSTOM_CENTER:
-            return this._calculateCenterPresetGeometry(definition, workArea, this._readCenterSize());
         case PRESET_TYPES.FIXED_CENTER:
             return this._calculateCenterPresetGeometry(definition, workArea, definition.size);
         default:
