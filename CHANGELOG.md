@@ -18,9 +18,9 @@ The project is currently preparing its first public release-candidate baseline f
 
 ---
 
-# v1.0-rc baseline
+# v1.0-rc1 baseline
 
-Release-readiness and public-release preparation baseline.
+Release-readiness and public-release preparation baseline for v1.0-rc1.
 
 Validated target:
 
