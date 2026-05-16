@@ -331,3 +331,9 @@ It is focused on:
 ```text
 simple, reliable, preset-based window sizing for Ubuntu GNOME Wayland
 ```
+
+## License
+
+Ubuntu Wayland Sizer is released under the MIT License.
+
+See [LICENSE](LICENSE) for details.
