@@ -21,6 +21,8 @@ const CUSTOM_PRESETS_KEY = 'custom-presets-json';
 const CUSTOM_PRESETS_VERSION = 1;
 const CUSTOM_PRESET_KIND = 'relative-geometry';
 const CUSTOM_PRESET_NAME_MAX_LENGTH = 80;
+const POPUP_SCROLL_MAX_HEIGHT = 760;
+const POPUP_REOPEN_DELAY_MS = 80;
 
 const PRESETS = Object.freeze({
     LEFT: 'left',
@@ -39,54 +41,23 @@ const PRESET_TYPES = Object.freeze({
     FIXED_CENTER: 'fixed-center',
 });
 
-const SIZE_GROUPS = Object.freeze({
-    BASIC: 'basic',
-    FOUR_THREE: '4:3',
-    SIXTEEN_NINE: '16:9',
-    SIXTEEN_TEN: '16:10',
-    LARGE: 'large',
-});
-
-const SIZE_LIBRARY = Object.freeze({
-    BASIC_640X480: Object.freeze({ id: 'basic-640x480', group: SIZE_GROUPS.BASIC, label: '640x480', width: 640, height: 480 }),
-    BASIC_800X600: Object.freeze({ id: 'basic-800x600', group: SIZE_GROUPS.BASIC, label: '800x600', width: 800, height: 600 }),
-    BASIC_1024X768: Object.freeze({ id: 'basic-1024x768', group: SIZE_GROUPS.BASIC, label: '1024x768', width: 1024, height: 768 }),
-    BASIC_1152X864: Object.freeze({ id: 'basic-1152x864', group: SIZE_GROUPS.BASIC, label: '1152x864', width: 1152, height: 864 }),
-    BASIC_1280X960: Object.freeze({ id: 'basic-1280x960', group: SIZE_GROUPS.BASIC, label: '1280x960', width: 1280, height: 960 }),
-
-    FOUR_THREE_640X480: Object.freeze({ id: '4-3-640x480', group: SIZE_GROUPS.FOUR_THREE, label: '640x480', width: 640, height: 480 }),
-    FOUR_THREE_800X600: Object.freeze({ id: '4-3-800x600', group: SIZE_GROUPS.FOUR_THREE, label: '800x600', width: 800, height: 600 }),
-    FOUR_THREE_1024X768: Object.freeze({ id: '4-3-1024x768', group: SIZE_GROUPS.FOUR_THREE, label: '1024x768', width: 1024, height: 768 }),
-    FOUR_THREE_1152X864: Object.freeze({ id: '4-3-1152x864', group: SIZE_GROUPS.FOUR_THREE, label: '1152x864', width: 1152, height: 864 }),
-    FOUR_THREE_1280X960: Object.freeze({ id: '4-3-1280x960', group: SIZE_GROUPS.FOUR_THREE, label: '1280x960', width: 1280, height: 960 }),
-    FOUR_THREE_1400X1050: Object.freeze({ id: '4-3-1400x1050', group: SIZE_GROUPS.FOUR_THREE, label: '1400x1050', width: 1400, height: 1050 }),
-    FOUR_THREE_1600X1200: Object.freeze({ id: '4-3-1600x1200', group: SIZE_GROUPS.FOUR_THREE, label: '1600x1200', width: 1600, height: 1200 }),
-
-    SIXTEEN_NINE_1280X720: Object.freeze({ id: '16-9-1280x720', group: SIZE_GROUPS.SIXTEEN_NINE, label: '1280x720', width: 1280, height: 720 }),
-    SIXTEEN_NINE_1366X768: Object.freeze({ id: '16-9-1366x768', group: SIZE_GROUPS.SIXTEEN_NINE, label: '1366x768', width: 1366, height: 768 }),
-    SIXTEEN_NINE_1600X900: Object.freeze({ id: '16-9-1600x900', group: SIZE_GROUPS.SIXTEEN_NINE, label: '1600x900', width: 1600, height: 900 }),
-    SIXTEEN_NINE_1920X1080: Object.freeze({ id: '16-9-1920x1080', group: SIZE_GROUPS.SIXTEEN_NINE, label: '1920x1080', width: 1920, height: 1080 }),
-    SIXTEEN_NINE_2560X1440: Object.freeze({ id: '16-9-2560x1440', group: SIZE_GROUPS.SIXTEEN_NINE, label: '2560x1440', width: 2560, height: 1440 }),
-
-    SIXTEEN_TEN_1280X800: Object.freeze({ id: '16-10-1280x800', group: SIZE_GROUPS.SIXTEEN_TEN, label: '1280x800', width: 1280, height: 800 }),
-    SIXTEEN_TEN_1440X900: Object.freeze({ id: '16-10-1440x900', group: SIZE_GROUPS.SIXTEEN_TEN, label: '1440x900', width: 1440, height: 900 }),
-    SIXTEEN_TEN_1680X1050: Object.freeze({ id: '16-10-1680x1050', group: SIZE_GROUPS.SIXTEEN_TEN, label: '1680x1050', width: 1680, height: 1050 }),
-    SIXTEEN_TEN_1920X1200: Object.freeze({ id: '16-10-1920x1200', group: SIZE_GROUPS.SIXTEEN_TEN, label: '1920x1200', width: 1920, height: 1200 }),
-
-    LARGE_1440X768: Object.freeze({ id: 'large-1440x768', group: SIZE_GROUPS.LARGE, label: '1440x768', width: 1440, height: 768 }),
-});
-
 const PRESET_DEFINITIONS = Object.freeze({
     [PRESETS.LEFT]: Object.freeze({ id: PRESETS.LEFT, type: PRESET_TYPES.LEFT_HALF, label: 'Left half' }),
     [PRESETS.RIGHT]: Object.freeze({ id: PRESETS.RIGHT, type: PRESET_TYPES.RIGHT_HALF, label: 'Right half' }),
     [PRESETS.FULL]: Object.freeze({ id: PRESETS.FULL, type: PRESET_TYPES.FULL_WORKAREA, label: 'Full workarea' }),
     [PRESETS.CENTER]: Object.freeze({ id: PRESETS.CENTER, type: PRESET_TYPES.CUSTOM_CENTER, label: 'Custom center' }),
-    [PRESETS.CENTER_COMPACT]: Object.freeze({ id: PRESETS.CENTER_COMPACT, type: PRESET_TYPES.FIXED_CENTER, label: 'Compact center', size: SIZE_LIBRARY.BASIC_800X600 }),
-    [PRESETS.CENTER_LARGE]: Object.freeze({ id: PRESETS.CENTER_LARGE, type: PRESET_TYPES.FIXED_CENTER, label: 'Large center', size: SIZE_LIBRARY.LARGE_1440X768 }),
+    [PRESETS.CENTER_COMPACT]: Object.freeze({ id: PRESETS.CENTER_COMPACT, type: PRESET_TYPES.FIXED_CENTER, label: 'Compact center', size: Object.freeze({ width: 800, height: 600 }) }),
+    [PRESETS.CENTER_LARGE]: Object.freeze({ id: PRESETS.CENTER_LARGE, type: PRESET_TYPES.FIXED_CENTER, label: 'Large center', size: Object.freeze({ width: 1440, height: 768 }) }),
 });
 
-const CENTER_CYCLE_PRESETS = Object.freeze([PRESETS.CENTER_COMPACT, PRESETS.CENTER, PRESETS.CENTER_LARGE]);
+const CENTER_CYCLE_PRESETS = Object.freeze([
+    PRESETS.CENTER_COMPACT,
+    PRESETS.CENTER,
+    PRESETS.CENTER_LARGE,
+]);
+
 const CYCLE_DIRECTIONS = Object.freeze({ NEXT: 1, PREVIOUS: -1 });
+
 const PRESET_KEYBINDINGS = Object.freeze([
     ['resize-left', PRESETS.LEFT],
     ['resize-right', PRESETS.RIGHT],
@@ -95,21 +66,29 @@ const PRESET_KEYBINDINGS = Object.freeze([
     ['resize-center-compact', PRESETS.CENTER_COMPACT],
     ['resize-center-large', PRESETS.CENTER_LARGE],
 ]);
+
 const CYCLE_KEYBINDINGS = Object.freeze([
     ['cycle-center-next', CYCLE_DIRECTIONS.NEXT],
     ['cycle-center-previous', CYCLE_DIRECTIONS.PREVIOUS],
 ]);
+
 const POPUP_KEYBINDINGS = Object.freeze(['open-preset-popup']);
+
 const POPUP_PRESET_GROUPS = Object.freeze([
-    Object.freeze({ title: 'Center Presets', presets: Object.freeze([PRESETS.CENTER_COMPACT, PRESETS.CENTER, PRESETS.CENTER_LARGE]) }),
-    Object.freeze({ title: 'Window Positions', presets: Object.freeze([PRESETS.LEFT, PRESETS.RIGHT, PRESETS.FULL]) }),
+    Object.freeze({
+        title: 'Center Presets',
+        presets: Object.freeze([PRESETS.CENTER_COMPACT, PRESETS.CENTER, PRESETS.CENTER_LARGE]),
+    }),
+    Object.freeze({
+        title: 'Window Positions',
+        presets: Object.freeze([PRESETS.LEFT, PRESETS.RIGHT, PRESETS.FULL]),
+    }),
 ]);
 
 const SavePresetDialog = GObject.registerClass(
 class SavePresetDialog extends ModalDialog.ModalDialog {
     _init(extension, suggestedName) {
         super._init({ styleClass: 'ubuntu-wayland-sizer-save-dialog' });
-
         this._extension = extension;
         this._entry = null;
         this._errorLabel = null;
@@ -125,12 +104,16 @@ class SavePresetDialog extends ModalDialog.ModalDialog {
         content.add_child(new St.Label({ text: 'Save Current Window As Preset', style: 'font-size: 18px; font-weight: bold;' }));
         content.add_child(new St.Label({ text: 'Preset name:' }));
 
-        this._entry = new St.Entry({ text: suggestedName, can_focus: true, hint_text: 'Preset name', style: 'min-width: 360px;' });
+        this._entry = new St.Entry({
+            text: suggestedName,
+            can_focus: true,
+            hint_text: 'Preset name',
+            style: 'min-width: 360px;',
+        });
         content.add_child(this._entry);
 
         this._errorLabel = new St.Label({ text: '', style: 'color: #ff9b9b;' });
         content.add_child(this._errorLabel);
-
         this.contentLayout.add_child(content);
     }
 
@@ -154,7 +137,6 @@ const DeletePresetDialog = GObject.registerClass(
 class DeletePresetDialog extends ModalDialog.ModalDialog {
     _init(extension, preset) {
         super._init({ styleClass: 'ubuntu-wayland-sizer-delete-dialog' });
-
         this._extension = extension;
         this._preset = preset;
         this._buildLayout();
@@ -175,7 +157,7 @@ class DeletePresetDialog extends ModalDialog.ModalDialog {
 
     _delete() {
         this.close();
-        this._extension._deleteCustomPresetById(this._preset.id);
+        this._extension._deleteCustomPresetById(this._preset.id, { reopenPopup: true });
     }
 });
 
@@ -191,8 +173,17 @@ class PresetPopupDialog extends ModalDialog.ModalDialog {
     }
 
     _buildLayout() {
-        const content = new St.BoxLayout({ vertical: true, style: 'spacing: 12px; min-width: 700px;' });
-        content.add_child(new St.Label({ text: 'Ubuntu Wayland Sizer', style: 'font-size: 20px; font-weight: bold;' }));
+        const outer = new St.BoxLayout({ vertical: true, style: 'spacing: 10px; min-width: 700px;' });
+        outer.add_child(new St.Label({ text: 'Ubuntu Wayland Sizer', style: 'font-size: 20px; font-weight: bold;' }));
+
+        const scrollView = new St.ScrollView({
+            style: `max-height: ${POPUP_SCROLL_MAX_HEIGHT}px;`,
+            hscrollbar_policy: St.PolicyType.NEVER,
+            vscrollbar_policy: St.PolicyType.AUTOMATIC,
+            overlay_scrollbars: true,
+        });
+        const content = new St.BoxLayout({ vertical: true, style: 'spacing: 8px; min-width: 680px; padding-right: 6px;' });
+
         content.add_child(this._buildGeometrySection());
         content.add_child(this._buildCurrentDisplaysSection());
 
@@ -204,24 +195,24 @@ class PresetPopupDialog extends ModalDialog.ModalDialog {
             content.add_child(this._buildCustomPresetGroup(customPresets));
 
         content.add_child(this._buildActionsSection());
-        this.contentLayout.add_child(content);
+        scrollView.add_actor(content);
+        outer.add_child(scrollView);
+        this.contentLayout.add_child(outer);
     }
 
     _buildGeometrySection() {
         const { monitorIndex, workArea, frameRect } = this._context;
         const relativeX = frameRect.x - workArea.x;
         const relativeY = frameRect.y - workArea.y;
-        const box = new St.BoxLayout({ vertical: true, style: 'spacing: 4px; padding: 12px; border-radius: 8px; background-color: rgba(255,255,255,0.08);' });
+        const box = new St.BoxLayout({ vertical: true, style: 'spacing: 2px; padding: 8px 10px; border-radius: 8px; background-color: rgba(255,255,255,0.08);' });
         box.add_child(new St.Label({ text: 'Focused Window', style: 'font-weight: bold;' }));
-        box.add_child(new St.Label({ text: `Display: ${monitorIndex + 1}` }));
-        box.add_child(new St.Label({ text: `Frame: x=${frameRect.x} y=${frameRect.y} w=${frameRect.width} h=${frameRect.height}` }));
-        box.add_child(new St.Label({ text: `Workarea: x=${workArea.x} y=${workArea.y} w=${workArea.width} h=${workArea.height}` }));
-        box.add_child(new St.Label({ text: `Relative: x=${relativeX} y=${relativeY} w=${frameRect.width} h=${frameRect.height}` }));
+        box.add_child(new St.Label({ text: `Display ${monitorIndex + 1} · ${frameRect.width}x${frameRect.height} · frame ${frameRect.x},${frameRect.y}` }));
+        box.add_child(new St.Label({ text: `Workarea ${workArea.x},${workArea.y} ${workArea.width}x${workArea.height} · relative ${relativeX},${relativeY}` }));
         return box;
     }
 
     _buildCurrentDisplaysSection() {
-        const box = new St.BoxLayout({ vertical: true, style: 'spacing: 4px; padding: 12px; border-radius: 8px; background-color: rgba(255,255,255,0.06);' });
+        const box = new St.BoxLayout({ vertical: true, style: 'spacing: 2px; padding: 8px 10px; border-radius: 8px; background-color: rgba(255,255,255,0.06);' });
         box.add_child(new St.Label({ text: 'Current Displays', style: 'font-weight: bold;' }));
 
         for (const display of this._extension._getDisplayInfos())
@@ -231,12 +222,16 @@ class PresetPopupDialog extends ModalDialog.ModalDialog {
     }
 
     _buildPresetGroup(group) {
-        const box = new St.BoxLayout({ vertical: true, style: 'spacing: 6px;' });
-        box.add_child(new St.Label({ text: group.title, style: 'font-weight: bold; padding-top: 6px;' }));
+        const box = new St.BoxLayout({ vertical: true, style: 'spacing: 4px;' });
+        box.add_child(new St.Label({ text: group.title, style: 'font-weight: bold; padding-top: 4px;' }));
 
         for (const presetName of group.presets) {
             const definition = PRESET_DEFINITIONS[presetName];
-            const button = new St.Button({ label: this._formatPresetButtonLabel(presetName, definition), can_focus: true, style: 'padding: 8px 12px; border-radius: 6px; background-color: rgba(255,255,255,0.10); text-align: left;' });
+            const button = new St.Button({
+                label: this._formatPresetButtonLabel(presetName, definition),
+                can_focus: true,
+                style: 'padding: 6px 10px; border-radius: 6px; background-color: rgba(255,255,255,0.10); text-align: left;',
+            });
             button.connect('clicked', () => {
                 this.close();
                 this._extension._debugLog(`popup: selected preset ${presetName}`);
@@ -249,13 +244,22 @@ class PresetPopupDialog extends ModalDialog.ModalDialog {
     }
 
     _buildCustomPresetGroup(customPresets) {
-        const box = new St.BoxLayout({ vertical: true, style: 'spacing: 6px;' });
-        box.add_child(new St.Label({ text: 'Saved Presets', style: 'font-weight: bold; padding-top: 6px;' }));
+        const box = new St.BoxLayout({ vertical: true, style: 'spacing: 4px;' });
+        box.add_child(new St.Label({ text: 'Saved Presets', style: 'font-weight: bold; padding-top: 4px;' }));
 
         for (const preset of customPresets) {
-            const row = new St.BoxLayout({ vertical: false, style: 'spacing: 8px;' });
-            const applyButton = new St.Button({ label: this._extension._formatCustomPresetButtonLabel(preset), can_focus: true, x_expand: true, style: 'padding: 8px 12px; border-radius: 6px; background-color: rgba(255,255,255,0.10); text-align: left;' });
-            const deleteButton = new St.Button({ label: 'Delete', can_focus: true, style: 'padding: 8px 12px; border-radius: 6px; background-color: rgba(255,120,120,0.16);' });
+            const row = new St.BoxLayout({ vertical: false, style: 'spacing: 6px;' });
+            const applyButton = new St.Button({
+                label: this._extension._formatCustomPresetButtonLabel(preset),
+                can_focus: true,
+                x_expand: true,
+                style: 'padding: 6px 10px; border-radius: 6px; background-color: rgba(255,255,255,0.10); text-align: left;',
+            });
+            const deleteButton = new St.Button({
+                label: 'Delete',
+                can_focus: true,
+                style: 'padding: 6px 10px; border-radius: 6px; background-color: rgba(255,120,120,0.16);',
+            });
 
             applyButton.connect('clicked', () => {
                 this.close();
@@ -276,10 +280,14 @@ class PresetPopupDialog extends ModalDialog.ModalDialog {
     }
 
     _buildActionsSection() {
-        const box = new St.BoxLayout({ vertical: true, style: 'spacing: 6px;' });
-        box.add_child(new St.Label({ text: 'Actions', style: 'font-weight: bold; padding-top: 6px;' }));
+        const box = new St.BoxLayout({ vertical: true, style: 'spacing: 4px;' });
+        box.add_child(new St.Label({ text: 'Actions', style: 'font-weight: bold; padding-top: 4px;' }));
 
-        const button = new St.Button({ label: 'Save Current Window As Preset', can_focus: true, style: 'padding: 8px 12px; border-radius: 6px; background-color: rgba(255,255,255,0.10); text-align: left;' });
+        const button = new St.Button({
+            label: 'Save Current Window As Preset',
+            can_focus: true,
+            style: 'padding: 6px 10px; border-radius: 6px; background-color: rgba(255,255,255,0.10); text-align: left;',
+        });
         button.connect('clicked', () => {
             this.close();
             this._extension._openSavePresetDialog();
@@ -321,6 +329,7 @@ export default class UbuntuWaylandSizerExtension extends Extension {
             this._presetPopupDialog = null;
             this._savePresetDialog = null;
             this._deletePresetDialog = null;
+            this._lastPopupWindow = null;
             this._debugLogging = this._readDebugLogging();
             this._debugLog(`enable: settings loaded from metadata settings-schema; debug-logging=${this._debugLogging}`);
 
@@ -388,6 +397,7 @@ export default class UbuntuWaylandSizerExtension extends Extension {
         this._presetPopupDialog = null;
         this._savePresetDialog = null;
         this._deletePresetDialog = null;
+        this._lastPopupWindow = null;
         this._debugLogging = true;
         this._settings = null;
     }
@@ -396,21 +406,26 @@ export default class UbuntuWaylandSizerExtension extends Extension {
         this._debugLog('popup: open requested');
         const window = global.display.get_focus_window();
 
-        if (!window) {
-            this._debugLog('popup: no focused window');
+        if (!this._isNormalWindow(window)) {
+            this._debugLog(window ? 'popup: ignored non-normal window' : 'popup: no focused window');
             return;
         }
 
-        if (window.window_type !== Meta.WindowType.NORMAL) {
-            this._debugLog('popup: ignored non-normal window');
+        this._showPresetPopupForWindow(window, 'open');
+    }
+
+    _showPresetPopupForWindow(window, reason) {
+        if (!this._isNormalWindow(window)) {
+            this._debugLog(`popup: cannot show popup because target window is invalid (${reason})`);
             return;
         }
 
         try {
-            this._closePresetPopupDialog('replace');
-            this._closeSavePresetDialog('replace');
-            this._closeDeletePresetDialog('replace');
+            this._closePresetPopupDialog(reason);
+            this._closeSavePresetDialog(reason);
+            this._closeDeletePresetDialog(reason);
             const context = this._getWindowContext(window);
+            this._lastPopupWindow = window;
             this._debugLog(`popup: context monitor=${context.monitorIndex}, workarea=${context.workArea.x},${context.workArea.y} ${context.workArea.width}x${context.workArea.height}, frame=${context.frameRect.x},${context.frameRect.y} ${context.frameRect.width}x${context.frameRect.height}`);
             this._presetPopupDialog = new PresetPopupDialog(this, window, context);
             this._presetPopupDialog.open();
@@ -418,6 +433,20 @@ export default class UbuntuWaylandSizerExtension extends Extension {
             console.error(`${LOG_PREFIX} popup: failed to open preset popup: ${this._formatError(error)}`);
             this._presetPopupDialog = null;
         }
+    }
+
+    _reopenPresetPopupAfterDelete() {
+        this._scheduleTimeout(POPUP_REOPEN_DELAY_MS, () => {
+            const window = this._isNormalWindow(this._lastPopupWindow) ? this._lastPopupWindow : global.display.get_focus_window();
+
+            if (!this._isNormalWindow(window)) {
+                this._debugLog('popup: delete auto-refresh skipped because no normal target window exists');
+                return;
+            }
+
+            this._debugLog('popup: reopening after saved preset delete');
+            this._showPresetPopupForWindow(window, 'delete-refresh');
+        });
     }
 
     _closePresetPopupDialog(reason) {
@@ -499,7 +528,7 @@ export default class UbuntuWaylandSizerExtension extends Extension {
         }
     }
 
-    _deleteCustomPresetById(id) {
+    _deleteCustomPresetById(id, options = {}) {
         const targetId = String(id ?? '').trim();
 
         if (!targetId) {
@@ -518,6 +547,10 @@ export default class UbuntuWaylandSizerExtension extends Extension {
         const remainingPresets = presets.filter(preset => preset.id !== targetId);
         this._writeCustomPresets(remainingPresets);
         this._debugLog(`custom-preset: deleted preset id=${targetPreset.id}, name=${targetPreset.name}`);
+
+        if (options.reopenPopup)
+            this._reopenPresetPopupAfterDelete();
+
         return true;
     }
 
@@ -568,10 +601,8 @@ export default class UbuntuWaylandSizerExtension extends Extension {
     }
 
     _writeCustomPresets(presets) {
-        const payload = { version: CUSTOM_PRESETS_VERSION, presets };
-
         try {
-            this._settings?.set_string(CUSTOM_PRESETS_KEY, JSON.stringify(payload));
+            this._settings?.set_string(CUSTOM_PRESETS_KEY, JSON.stringify({ version: CUSTOM_PRESETS_VERSION, presets }));
         } catch (error) {
             console.error(`${LOG_PREFIX} custom-preset: failed to write ${CUSTOM_PRESETS_KEY}: ${this._formatError(error)}`);
         }
@@ -601,10 +632,7 @@ export default class UbuntuWaylandSizerExtension extends Extension {
         if (!id || !name || kind !== CUSTOM_PRESET_KIND)
             return null;
 
-        if (![x, y, width, height].every(Number.isFinite))
-            return null;
-
-        if (width <= 0 || height <= 0)
+        if (![x, y, width, height].every(Number.isFinite) || width <= 0 || height <= 0)
             return null;
 
         const resolvedOriginWidth = Number.isFinite(originWorkareaWidth) && originWorkareaWidth > 0
@@ -637,7 +665,7 @@ export default class UbuntuWaylandSizerExtension extends Extension {
     _saveFocusedWindowGeometryAsCustomPreset(name) {
         const window = global.display.get_focus_window();
 
-        if (!window || window.window_type !== Meta.WindowType.NORMAL) {
+        if (!this._isNormalWindow(window)) {
             this._debugLog('custom-preset: save ignored because no normal focused window exists');
             return;
         }
@@ -647,7 +675,6 @@ export default class UbuntuWaylandSizerExtension extends Extension {
         const presets = this._readCustomPresets();
         presets.push(preset);
         this._writeCustomPresets(presets);
-
         this._debugLog(`custom-preset: saved preset id=${preset.id}, name=${preset.name}, display=${preset.originDisplayNumber}, geometry=${preset.x},${preset.y} ${preset.width}x${preset.height}`);
     }
 
@@ -687,7 +714,7 @@ export default class UbuntuWaylandSizerExtension extends Extension {
         this._debugLog(`custom-preset: applying preset id=${validPreset.id}, name=${validPreset.name}`);
         const window = global.display.get_focus_window();
 
-        if (!window || window.window_type !== Meta.WindowType.NORMAL) {
+        if (!this._isNormalWindow(window)) {
             this._debugLog('custom-preset: apply ignored because no normal focused window exists');
             return;
         }
@@ -726,7 +753,6 @@ export default class UbuntuWaylandSizerExtension extends Extension {
     _applyCustomPresetToWindow(window, preset, targetContext, reason) {
         const target = this._calculateCustomPresetGeometry(preset, targetContext.workArea);
         const currentContext = this._getWindowContext(window);
-
         this._debugLog(`custom-preset: geometry context (${reason}): currentMonitor=${currentContext.monitorIndex}, targetMonitor=${targetContext.monitorIndex}, originAvailable=${targetContext.originAvailable}, targetWorkarea=${targetContext.workArea.x},${targetContext.workArea.y} ${targetContext.workArea.width}x${targetContext.workArea.height}, frame=${currentContext.frameRect.x},${currentContext.frameRect.y} ${currentContext.frameRect.width}x${currentContext.frameRect.height}`);
 
         if (!this._isUsableGeometry(target)) {
@@ -830,13 +856,7 @@ export default class UbuntuWaylandSizerExtension extends Extension {
                 const workArea = workspace.get_work_area_for_monitor(monitorIndex);
                 const monitor = monitors[monitorIndex] ?? {};
                 const label = this._extractMonitorLabel(monitor, monitorIndex);
-                infos.push({
-                    monitorIndex,
-                    displayNumber: monitorIndex + 1,
-                    label,
-                    workArea,
-                    orientation: this._getOrientation(workArea.width, workArea.height),
-                });
+                infos.push({ monitorIndex, displayNumber: monitorIndex + 1, label, workArea, orientation: this._getOrientation(workArea.width, workArea.height) });
             } catch (error) {
                 this._debugLog(`display: failed to inspect monitor ${monitorIndex}: ${this._formatError(error)}`);
             }
@@ -862,14 +882,7 @@ export default class UbuntuWaylandSizerExtension extends Extension {
     }
 
     _extractMonitorLabel(monitor, monitorIndex) {
-        const candidates = [
-            monitor?.displayName,
-            monitor?.display_name,
-            monitor?.name,
-            monitor?.product,
-            monitor?.vendor,
-            monitor?.connector,
-        ];
+        const candidates = [monitor?.displayName, monitor?.display_name, monitor?.name, monitor?.product, monitor?.vendor, monitor?.connector];
 
         for (const candidate of candidates) {
             const label = this._normalizeDisplayLabel(candidate ?? '');
@@ -944,7 +957,7 @@ export default class UbuntuWaylandSizerExtension extends Extension {
 
     _inferCenterCycleIndexFromFocusedWindow() {
         const window = global.display.get_focus_window();
-        if (!window || window.window_type !== Meta.WindowType.NORMAL)
+        if (!this._isNormalWindow(window))
             return UNKNOWN_CYCLE_INDEX;
 
         try {
@@ -953,7 +966,7 @@ export default class UbuntuWaylandSizerExtension extends Extension {
 
             for (let index = 0; index < CENTER_CYCLE_PRESETS.length; index++) {
                 const presetName = CENTER_CYCLE_PRESETS[index];
-                const target = this._calculatePresetGeometry(presetName, context.workArea, frameRect);
+                const target = this._calculatePresetGeometry(presetName, context.workArea);
                 if (target && this._isNearlySameFrame(frameRect, target)) {
                     this._debugLog(`action: inferred center cycle index=${index}, preset=${presetName}`);
                     return index;
@@ -986,13 +999,8 @@ export default class UbuntuWaylandSizerExtension extends Extension {
         this._debugLog(`action: preset triggered: ${presetName}`);
         const window = global.display.get_focus_window();
 
-        if (!window) {
-            this._debugLog('action: no focused window');
-            return;
-        }
-
-        if (window.window_type !== Meta.WindowType.NORMAL) {
-            this._debugLog('action: ignored non-normal window');
+        if (!this._isNormalWindow(window)) {
+            this._debugLog(window ? 'action: ignored non-normal window' : 'action: no focused window');
             return;
         }
 
@@ -1027,7 +1035,7 @@ export default class UbuntuWaylandSizerExtension extends Extension {
 
     _applyPresetToWindow(window, presetName, reason) {
         const context = this._getWindowContext(window);
-        const target = this._calculatePresetGeometry(presetName, context.workArea, context.frameRect);
+        const target = this._calculatePresetGeometry(presetName, context.workArea);
         this._debugLog(`action: geometry context (${reason}): monitor=${context.monitorIndex}, workarea=${context.workArea.x},${context.workArea.y} ${context.workArea.width}x${context.workArea.height}, frame=${context.frameRect.x},${context.frameRect.y} ${context.frameRect.width}x${context.frameRect.height}`);
 
         if (!target) {
@@ -1130,6 +1138,60 @@ export default class UbuntuWaylandSizerExtension extends Extension {
         }
     }
 
+    _calculatePresetGeometry(presetName, workArea) {
+        const definition = PRESET_DEFINITIONS[presetName];
+        if (!definition)
+            return null;
+
+        const halfWidth = Math.floor(workArea.width / 2);
+
+        switch (definition.type) {
+        case PRESET_TYPES.LEFT_HALF:
+            return this._clampGeometryToWorkArea({ x: workArea.x, y: workArea.y, width: halfWidth, height: workArea.height }, workArea);
+        case PRESET_TYPES.RIGHT_HALF:
+            return this._clampGeometryToWorkArea({ x: workArea.x + halfWidth, y: workArea.y, width: workArea.width - halfWidth, height: workArea.height }, workArea);
+        case PRESET_TYPES.FULL_WORKAREA:
+            return this._clampGeometryToWorkArea({ x: workArea.x, y: workArea.y, width: workArea.width, height: workArea.height }, workArea);
+        case PRESET_TYPES.CUSTOM_CENTER:
+            return this._calculateCenterPresetGeometry(definition, workArea, this._readCenterSize());
+        case PRESET_TYPES.FIXED_CENTER:
+            return this._calculateCenterPresetGeometry(definition, workArea, definition.size);
+        default:
+            return null;
+        }
+    }
+
+    _calculateCenterPresetGeometry(definition, workArea, centerSize) {
+        const targetWidth = Math.min(centerSize.width, workArea.width);
+        const targetHeight = Math.min(centerSize.height, workArea.height);
+        this._debugLog(`action: ${definition.id} preset size: configured=${centerSize.width}x${centerSize.height}, target=${targetWidth}x${targetHeight}`);
+        return this._clampGeometryToWorkArea({ x: workArea.x + Math.floor((workArea.width - targetWidth) / 2), y: workArea.y + Math.floor((workArea.height - targetHeight) / 2), width: targetWidth, height: targetHeight }, workArea);
+    }
+
+    _calculateSafeRestoreGeometry(workArea) {
+        const width = Math.max(1, Math.floor(workArea.width * 0.72));
+        const height = Math.max(1, Math.floor(workArea.height * 0.72));
+        return this._clampGeometryToWorkArea({ x: workArea.x + Math.floor((workArea.width - width) / 2), y: workArea.y + Math.floor((workArea.height - height) / 2), width, height }, workArea);
+    }
+
+    _clampGeometryToWorkArea(geometry, workArea) {
+        const maxX = workArea.x + workArea.width;
+        const maxY = workArea.y + workArea.height;
+        const x = Math.max(workArea.x, Math.min(geometry.x, maxX - 1));
+        const y = Math.max(workArea.y, Math.min(geometry.y, maxY - 1));
+        const width = Math.max(1, Math.min(geometry.width, maxX - x));
+        const height = Math.max(1, Math.min(geometry.height, maxY - y));
+        return { x, y, width, height };
+    }
+
+    _isNormalWindow(window) {
+        return Boolean(window && window.window_type === Meta.WindowType.NORMAL);
+    }
+
+    _isUsableGeometry(geometry) {
+        return Number.isFinite(geometry.x) && Number.isFinite(geometry.y) && Number.isFinite(geometry.width) && Number.isFinite(geometry.height) && geometry.width > 0 && geometry.height > 0;
+    }
+
     _isNearlySameFrame(frameRect, target) {
         return Math.abs(frameRect.x - target.x) <= 1 && Math.abs(frameRect.y - target.y) <= 1 && Math.abs(frameRect.width - target.width) <= 1 && Math.abs(frameRect.height - target.height) <= 1;
     }
@@ -1188,56 +1250,6 @@ export default class UbuntuWaylandSizerExtension extends Extension {
         } catch (error) {
             console.error(`${LOG_PREFIX} action: move_to_monitor skipped/failed: ${this._formatError(error)}`);
         }
-    }
-
-    _calculateSafeRestoreGeometry(workArea) {
-        const width = Math.max(1, Math.floor(workArea.width * 0.72));
-        const height = Math.max(1, Math.floor(workArea.height * 0.72));
-        return this._clampGeometryToWorkArea({ x: workArea.x + Math.floor((workArea.width - width) / 2), y: workArea.y + Math.floor((workArea.height - height) / 2), width, height }, workArea);
-    }
-
-    _calculatePresetGeometry(presetName, workArea, frameRect) {
-        const definition = PRESET_DEFINITIONS[presetName];
-        if (!definition)
-            return null;
-
-        const halfWidth = Math.floor(workArea.width / 2);
-
-        switch (definition.type) {
-        case PRESET_TYPES.LEFT_HALF:
-            return this._clampGeometryToWorkArea({ x: workArea.x, y: workArea.y, width: halfWidth, height: workArea.height }, workArea);
-        case PRESET_TYPES.RIGHT_HALF:
-            return this._clampGeometryToWorkArea({ x: workArea.x + halfWidth, y: workArea.y, width: workArea.width - halfWidth, height: workArea.height }, workArea);
-        case PRESET_TYPES.FULL_WORKAREA:
-            return this._clampGeometryToWorkArea({ x: workArea.x, y: workArea.y, width: workArea.width, height: workArea.height }, workArea);
-        case PRESET_TYPES.CUSTOM_CENTER:
-            return this._calculateCenterPresetGeometry(definition, workArea, this._readCenterSize());
-        case PRESET_TYPES.FIXED_CENTER:
-            return this._calculateCenterPresetGeometry(definition, workArea, definition.size);
-        default:
-            return null;
-        }
-    }
-
-    _calculateCenterPresetGeometry(definition, workArea, centerSize) {
-        const targetWidth = Math.min(centerSize.width, workArea.width);
-        const targetHeight = Math.min(centerSize.height, workArea.height);
-        this._debugLog(`action: ${definition.id} preset size: configured=${centerSize.width}x${centerSize.height}, target=${targetWidth}x${targetHeight}`);
-        return this._clampGeometryToWorkArea({ x: workArea.x + Math.floor((workArea.width - targetWidth) / 2), y: workArea.y + Math.floor((workArea.height - targetHeight) / 2), width: targetWidth, height: targetHeight }, workArea);
-    }
-
-    _clampGeometryToWorkArea(geometry, workArea) {
-        const maxX = workArea.x + workArea.width;
-        const maxY = workArea.y + workArea.height;
-        const x = Math.max(workArea.x, Math.min(geometry.x, maxX - 1));
-        const y = Math.max(workArea.y, Math.min(geometry.y, maxY - 1));
-        const width = Math.max(1, Math.min(geometry.width, maxX - x));
-        const height = Math.max(1, Math.min(geometry.height, maxY - y));
-        return { x, y, width, height };
-    }
-
-    _isUsableGeometry(geometry) {
-        return Number.isFinite(geometry.x) && Number.isFinite(geometry.y) && Number.isFinite(geometry.width) && Number.isFinite(geometry.height) && geometry.width > 0 && geometry.height > 0;
     }
 
     _readCenterSize() {
