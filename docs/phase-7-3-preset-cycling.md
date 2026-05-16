@@ -518,3 +518,22 @@ Observed after deploy, schema compile, and logout/login:
 [ubuntu-wayland-sizer][DEBUG] enable: settings loaded from metadata settings-schema; debug-logging=true
 [ubuntu-wayland-sizer][DEBUG] enable: keybinding registered: resize-left -> left
 [ubuntu-wayland-sizer][NORMAL] enabled
+
+---
+
+## Phase 7.3d Popup Runtime Controls Validation
+
+Result: PASS
+
+Implemented popup runtime log mode control.
+
+Layout:
+
+```text
+Popup title: Ubuntu Wayland Sizer
+
+Focused Window section                       Log control section
+Current Displays section
+Preset sections
+Saved Presets
+Actions
