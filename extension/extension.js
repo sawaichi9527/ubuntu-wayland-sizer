@@ -394,7 +394,7 @@ export default class UbuntuWaylandSizerExtension extends Extension {
                 try {
                     GLib.source_remove(sourceId);
                 } catch (error) {
-                    console.error(`${LOG_PREFIX} cleanup: failed to remove pending timeout ${sourceId}: ${this._formatError(error)}`);
+                    this._warningLog(`cleanup: failed to remove pending timeout ${sourceId}: ${this._formatError(error)}`);
                 }
             }
         }
@@ -405,7 +405,7 @@ export default class UbuntuWaylandSizerExtension extends Extension {
                     Main.wm.removeKeybinding(keybindingName);
                     this._debugLog(`cleanup: keybinding removed: ${keybindingName}`);
                 } catch (error) {
-                    console.error(`${LOG_PREFIX} cleanup: failed to remove keybinding ${keybindingName}: ${this._formatError(error)}`);
+                    this._warningLog(`cleanup: failed to remove keybinding ${keybindingName}: ${this._formatError(error)}`);
                 }
             }
         }
@@ -453,7 +453,7 @@ export default class UbuntuWaylandSizerExtension extends Extension {
             this._presetPopupDialog = new PresetPopupDialog(this, window, context);
             this._presetPopupDialog.open();
         } catch (error) {
-            console.error(`${LOG_PREFIX} popup: failed to open preset popup: ${this._formatError(error)}`);
+            this._criticalLog(`popup: failed to open preset popup: ${this._formatError(error)}`);
             this._presetPopupDialog = null;
         }
     }
@@ -496,7 +496,7 @@ export default class UbuntuWaylandSizerExtension extends Extension {
             this._savePresetDialog = new SavePresetDialog(this, suggestedName);
             this._savePresetDialog.open();
         } catch (error) {
-            console.error(`${LOG_PREFIX} custom-preset: failed to open save dialog: ${this._formatError(error)}`);
+            this._criticalLog(`custom-preset: failed to open save dialog: ${this._formatError(error)}`);
             this._savePresetDialog = null;
         }
     }
@@ -532,7 +532,7 @@ export default class UbuntuWaylandSizerExtension extends Extension {
             this._deletePresetDialog = new DeletePresetDialog(this, validPreset);
             this._deletePresetDialog.open();
         } catch (error) {
-            console.error(`${LOG_PREFIX} custom-preset: failed to open delete dialog: ${this._formatError(error)}`);
+            this._criticalLog(`custom-preset: failed to open delete dialog: ${this._formatError(error)}`);
             this._deletePresetDialog = null;
         }
     }
@@ -607,7 +607,7 @@ export default class UbuntuWaylandSizerExtension extends Extension {
         try {
             rawJson = this._settings?.get_string(CUSTOM_PRESETS_KEY) ?? '';
         } catch (error) {
-            console.error(`${LOG_PREFIX} custom-preset: failed to read ${CUSTOM_PRESETS_KEY}: ${this._formatError(error)}`);
+            this._criticalLog(`custom-preset: failed to read ${CUSTOM_PRESETS_KEY}: ${this._formatError(error)}`);
             return [];
         }
 
@@ -618,7 +618,7 @@ export default class UbuntuWaylandSizerExtension extends Extension {
 
             return parsed.presets.map(preset => this._validateCustomPreset(preset)).filter(preset => preset !== null);
         } catch (error) {
-            console.error(`${LOG_PREFIX} custom-preset: failed to parse ${CUSTOM_PRESETS_KEY}: ${this._formatError(error)}`);
+            this._criticalLog(`custom-preset: failed to parse ${CUSTOM_PRESETS_KEY}: ${this._formatError(error)}`);
             return [];
         }
     }
@@ -627,7 +627,7 @@ export default class UbuntuWaylandSizerExtension extends Extension {
         try {
             this._settings?.set_string(CUSTOM_PRESETS_KEY, JSON.stringify({ version: CUSTOM_PRESETS_VERSION, presets }));
         } catch (error) {
-            console.error(`${LOG_PREFIX} custom-preset: failed to write ${CUSTOM_PRESETS_KEY}: ${this._formatError(error)}`);
+            this._criticalLog(`custom-preset: failed to write ${CUSTOM_PRESETS_KEY}: ${this._formatError(error)}`);
         }
     }
 
