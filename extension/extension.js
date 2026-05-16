@@ -56,11 +56,11 @@ const PRESET_DEFINITIONS = Object.freeze({
     [PRESETS.LEFT]: Object.freeze({ id: PRESETS.LEFT, type: PRESET_TYPES.LEFT_HALF, label: 'Left half' }),
     [PRESETS.RIGHT]: Object.freeze({ id: PRESETS.RIGHT, type: PRESET_TYPES.RIGHT_HALF, label: 'Right half' }),
     [PRESETS.FULL]: Object.freeze({ id: PRESETS.FULL, type: PRESET_TYPES.FULL_WORKAREA, label: 'Full workarea' }),
-    [PRESETS.CENTER]: Object.freeze({ id: PRESETS.CENTER, type: PRESET_TYPES.CUSTOM_CENTER, label: 'Center' }),
+    [PRESETS.CENTER]: Object.freeze({ id: PRESETS.CENTER, type: PRESET_TYPES.FIXED_CENTER, label: 'Wide-medium Center', size: Object.freeze({ width: 1152, height: 864 }) }),
     [PRESETS.CENTER_TINY]: Object.freeze({ id: PRESETS.CENTER_TINY, type: PRESET_TYPES.FIXED_CENTER, label: 'Tiny Center', size: Object.freeze({ width: 640, height: 480 }) }),
     [PRESETS.CENTER_COMPACT]: Object.freeze({ id: PRESETS.CENTER_COMPACT, type: PRESET_TYPES.FIXED_CENTER, label: 'Compact Center', size: Object.freeze({ width: 800, height: 600 }) }),
     [PRESETS.CENTER_MEDIUM]: Object.freeze({ id: PRESETS.CENTER_MEDIUM, type: PRESET_TYPES.FIXED_CENTER, label: 'Medium Center', size: Object.freeze({ width: 1024, height: 768 }) }),
-    [PRESETS.CENTER_LARGE]: Object.freeze({ id: PRESETS.CENTER_LARGE, type: PRESET_TYPES.FIXED_CENTER, label: 'Large Center', size: Object.freeze({ width: 1440, height: 768 }) }),
+    [PRESETS.CENTER_LARGE]: Object.freeze({ id: PRESETS.CENTER_LARGE, type: PRESET_TYPES.FIXED_CENTER, label: 'Large Center', size: Object.freeze({ width: 1280, height: 960 }) }),
     [PRESETS.CENTER_ULTRAWIDE]: Object.freeze({ id: PRESETS.CENTER_ULTRAWIDE, type: PRESET_TYPES.FIXED_CENTER, label: 'Ultra-wide Center', size: Object.freeze({ width: 1600, height: 900 }) }),
 });
 
@@ -371,10 +371,7 @@ class PresetPopupDialog extends ModalDialog.ModalDialog {
             return `${definition.label} — current workarea right half`;
         case PRESET_TYPES.FULL_WORKAREA:
             return `${definition.label} — current workarea`;
-        case PRESET_TYPES.CUSTOM_CENTER: {
-            const size = this._extension._readCenterSize();
-            return `${definition.label} — ${size.width}x${size.height}`;
-        }
+        case PRESET_TYPES.CUSTOM_CENTER:
         case PRESET_TYPES.FIXED_CENTER:
             return `${definition.label} — ${definition.size.width}x${definition.size.height}`;
         default:
@@ -1359,7 +1356,6 @@ export default class UbuntuWaylandSizerExtension extends Extension {
         case PRESET_TYPES.FULL_WORKAREA:
             return this._clampGeometryToWorkArea({ x: workArea.x, y: workArea.y, width: workArea.width, height: workArea.height }, workArea);
         case PRESET_TYPES.CUSTOM_CENTER:
-            return this._calculateCenterPresetGeometry(definition, workArea, this._readCenterSize());
         case PRESET_TYPES.FIXED_CENTER:
             return this._calculateCenterPresetGeometry(definition, workArea, definition.size);
         default:
