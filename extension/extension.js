@@ -16,6 +16,7 @@ const DEFAULT_CENTER_WIDTH = 1280;
 const DEFAULT_CENTER_HEIGHT = 720;
 const MIN_CENTER_SIZE = 100;
 const UNKNOWN_CYCLE_INDEX = -1;
+const UNKNOWN_MONITOR_INDEX = -1;
 const CUSTOM_PRESETS_KEY = 'custom-presets-json';
 const CUSTOM_PRESETS_VERSION = 1;
 const CUSTOM_PRESET_KIND = 'relative-geometry';
@@ -76,51 +77,16 @@ const SIZE_LIBRARY = Object.freeze({
 });
 
 const PRESET_DEFINITIONS = Object.freeze({
-    [PRESETS.LEFT]: Object.freeze({
-        id: PRESETS.LEFT,
-        type: PRESET_TYPES.LEFT_HALF,
-        label: 'Left half',
-    }),
-    [PRESETS.RIGHT]: Object.freeze({
-        id: PRESETS.RIGHT,
-        type: PRESET_TYPES.RIGHT_HALF,
-        label: 'Right half',
-    }),
-    [PRESETS.FULL]: Object.freeze({
-        id: PRESETS.FULL,
-        type: PRESET_TYPES.FULL_WORKAREA,
-        label: 'Full workarea',
-    }),
-    [PRESETS.CENTER]: Object.freeze({
-        id: PRESETS.CENTER,
-        type: PRESET_TYPES.CUSTOM_CENTER,
-        label: 'Custom center',
-    }),
-    [PRESETS.CENTER_COMPACT]: Object.freeze({
-        id: PRESETS.CENTER_COMPACT,
-        type: PRESET_TYPES.FIXED_CENTER,
-        label: 'Compact center',
-        size: SIZE_LIBRARY.BASIC_800X600,
-    }),
-    [PRESETS.CENTER_LARGE]: Object.freeze({
-        id: PRESETS.CENTER_LARGE,
-        type: PRESET_TYPES.FIXED_CENTER,
-        label: 'Large center',
-        size: SIZE_LIBRARY.LARGE_1440X768,
-    }),
+    [PRESETS.LEFT]: Object.freeze({ id: PRESETS.LEFT, type: PRESET_TYPES.LEFT_HALF, label: 'Left half' }),
+    [PRESETS.RIGHT]: Object.freeze({ id: PRESETS.RIGHT, type: PRESET_TYPES.RIGHT_HALF, label: 'Right half' }),
+    [PRESETS.FULL]: Object.freeze({ id: PRESETS.FULL, type: PRESET_TYPES.FULL_WORKAREA, label: 'Full workarea' }),
+    [PRESETS.CENTER]: Object.freeze({ id: PRESETS.CENTER, type: PRESET_TYPES.CUSTOM_CENTER, label: 'Custom center' }),
+    [PRESETS.CENTER_COMPACT]: Object.freeze({ id: PRESETS.CENTER_COMPACT, type: PRESET_TYPES.FIXED_CENTER, label: 'Compact center', size: SIZE_LIBRARY.BASIC_800X600 }),
+    [PRESETS.CENTER_LARGE]: Object.freeze({ id: PRESETS.CENTER_LARGE, type: PRESET_TYPES.FIXED_CENTER, label: 'Large center', size: SIZE_LIBRARY.LARGE_1440X768 }),
 });
 
-const CENTER_CYCLE_PRESETS = Object.freeze([
-    PRESETS.CENTER_COMPACT,
-    PRESETS.CENTER,
-    PRESETS.CENTER_LARGE,
-]);
-
-const CYCLE_DIRECTIONS = Object.freeze({
-    NEXT: 1,
-    PREVIOUS: -1,
-});
-
+const CENTER_CYCLE_PRESETS = Object.freeze([PRESETS.CENTER_COMPACT, PRESETS.CENTER, PRESETS.CENTER_LARGE]);
+const CYCLE_DIRECTIONS = Object.freeze({ NEXT: 1, PREVIOUS: -1 });
 const PRESET_KEYBINDINGS = Object.freeze([
     ['resize-left', PRESETS.LEFT],
     ['resize-right', PRESETS.RIGHT],
@@ -129,33 +95,14 @@ const PRESET_KEYBINDINGS = Object.freeze([
     ['resize-center-compact', PRESETS.CENTER_COMPACT],
     ['resize-center-large', PRESETS.CENTER_LARGE],
 ]);
-
 const CYCLE_KEYBINDINGS = Object.freeze([
     ['cycle-center-next', CYCLE_DIRECTIONS.NEXT],
     ['cycle-center-previous', CYCLE_DIRECTIONS.PREVIOUS],
 ]);
-
-const POPUP_KEYBINDINGS = Object.freeze([
-    'open-preset-popup',
-]);
-
+const POPUP_KEYBINDINGS = Object.freeze(['open-preset-popup']);
 const POPUP_PRESET_GROUPS = Object.freeze([
-    Object.freeze({
-        title: 'Center Presets',
-        presets: Object.freeze([
-            PRESETS.CENTER_COMPACT,
-            PRESETS.CENTER,
-            PRESETS.CENTER_LARGE,
-        ]),
-    }),
-    Object.freeze({
-        title: 'Window Positions',
-        presets: Object.freeze([
-            PRESETS.LEFT,
-            PRESETS.RIGHT,
-            PRESETS.FULL,
-        ]),
-    }),
+    Object.freeze({ title: 'Center Presets', presets: Object.freeze([PRESETS.CENTER_COMPACT, PRESETS.CENTER, PRESETS.CENTER_LARGE]) }),
+    Object.freeze({ title: 'Window Positions', presets: Object.freeze([PRESETS.LEFT, PRESETS.RIGHT, PRESETS.FULL]) }),
 ]);
 
 const SavePresetDialog = GObject.registerClass(
@@ -165,57 +112,41 @@ class SavePresetDialog extends ModalDialog.ModalDialog {
 
         this._extension = extension;
         this._entry = null;
+        this._errorLabel = null;
         this._buildLayout(suggestedName);
         this.setButtons([
-            {
-                label: 'Cancel',
-                action: () => this.close(),
-            },
-            {
-                label: 'Save',
-                action: () => this._save(),
-                default: true,
-            },
+            { label: 'Cancel', action: () => this.close() },
+            { label: 'Save', action: () => this._save(), default: true },
         ]);
     }
 
     _buildLayout(suggestedName) {
-        const content = new St.BoxLayout({
-            vertical: true,
-            style: 'spacing: 12px; min-width: 420px;',
-        });
+        const content = new St.BoxLayout({ vertical: true, style: 'spacing: 12px; min-width: 420px;' });
+        content.add_child(new St.Label({ text: 'Save Current Window As Preset', style: 'font-size: 18px; font-weight: bold;' }));
+        content.add_child(new St.Label({ text: 'Preset name:' }));
 
-        content.add_child(new St.Label({
-            text: 'Save Current Window As Preset',
-            style: 'font-size: 18px; font-weight: bold;',
-        }));
-
-        content.add_child(new St.Label({
-            text: 'Preset name:',
-        }));
-
-        this._entry = new St.Entry({
-            text: suggestedName,
-            can_focus: true,
-            hint_text: 'Preset name',
-            style: 'min-width: 360px;',
-        });
-
+        this._entry = new St.Entry({ text: suggestedName, can_focus: true, hint_text: 'Preset name', style: 'min-width: 360px;' });
         content.add_child(this._entry);
+
+        this._errorLabel = new St.Label({ text: '', style: 'color: #ff9b9b;' });
+        content.add_child(this._errorLabel);
+
         this.contentLayout.add_child(content);
     }
 
     _save() {
         const rawName = this._entry?.get_text ? this._entry.get_text() : this._entry?.clutter_text?.get_text();
-        const name = this._extension._normalizeCustomPresetName(rawName ?? '');
+        const result = this._extension._validateCustomPresetName(rawName ?? '');
 
-        if (!name) {
-            this._extension._debugLog('custom-preset: save rejected because name is empty');
+        if (!result.ok) {
+            this._errorLabel.set_text(result.message);
+            this._extension._debugLog(`custom-preset: save rejected: ${result.reason}`);
+            this._entry?.grab_key_focus?.();
             return;
         }
 
         this.close();
-        this._extension._saveFocusedWindowGeometryAsCustomPreset(name);
+        this._extension._saveFocusedWindowGeometryAsCustomPreset(result.name);
     }
 });
 
@@ -223,32 +154,18 @@ const PresetPopupDialog = GObject.registerClass(
 class PresetPopupDialog extends ModalDialog.ModalDialog {
     _init(extension, window, context) {
         super._init({ styleClass: 'ubuntu-wayland-sizer-dialog' });
-
         this._extension = extension;
         this._window = window;
         this._context = context;
-
         this._buildLayout();
-        this.setButtons([
-            {
-                label: 'Close',
-                action: () => this.close(),
-            },
-        ]);
+        this.setButtons([{ label: 'Close', action: () => this.close() }]);
     }
 
     _buildLayout() {
-        const content = new St.BoxLayout({
-            vertical: true,
-            style: 'spacing: 12px; min-width: 560px;',
-        });
-
-        content.add_child(new St.Label({
-            text: 'Ubuntu Wayland Sizer',
-            style: 'font-size: 20px; font-weight: bold;',
-        }));
-
+        const content = new St.BoxLayout({ vertical: true, style: 'spacing: 12px; min-width: 620px;' });
+        content.add_child(new St.Label({ text: 'Ubuntu Wayland Sizer', style: 'font-size: 20px; font-weight: bold;' }));
         content.add_child(this._buildGeometrySection());
+        content.add_child(this._buildCurrentDisplaysSection());
 
         for (const group of POPUP_PRESET_GROUPS)
             content.add_child(this._buildPresetGroup(group));
@@ -258,7 +175,6 @@ class PresetPopupDialog extends ModalDialog.ModalDialog {
             content.add_child(this._buildCustomPresetGroup(customPresets));
 
         content.add_child(this._buildActionsSection());
-
         this.contentLayout.add_child(content);
     }
 
@@ -266,49 +182,37 @@ class PresetPopupDialog extends ModalDialog.ModalDialog {
         const { monitorIndex, workArea, frameRect } = this._context;
         const relativeX = frameRect.x - workArea.x;
         const relativeY = frameRect.y - workArea.y;
-
-        const box = new St.BoxLayout({
-            vertical: true,
-            style: 'spacing: 4px; padding: 12px; border-radius: 8px; background-color: rgba(255,255,255,0.08);',
-        });
-
-        box.add_child(new St.Label({
-            text: 'Focused Window',
-            style: 'font-weight: bold;',
-        }));
-        box.add_child(new St.Label({ text: `Monitor: ${monitorIndex}` }));
+        const box = new St.BoxLayout({ vertical: true, style: 'spacing: 4px; padding: 12px; border-radius: 8px; background-color: rgba(255,255,255,0.08);' });
+        box.add_child(new St.Label({ text: 'Focused Window', style: 'font-weight: bold;' }));
+        box.add_child(new St.Label({ text: `Display: ${monitorIndex + 1}` }));
         box.add_child(new St.Label({ text: `Frame: x=${frameRect.x} y=${frameRect.y} w=${frameRect.width} h=${frameRect.height}` }));
         box.add_child(new St.Label({ text: `Workarea: x=${workArea.x} y=${workArea.y} w=${workArea.width} h=${workArea.height}` }));
         box.add_child(new St.Label({ text: `Relative: x=${relativeX} y=${relativeY} w=${frameRect.width} h=${frameRect.height}` }));
+        return box;
+    }
+
+    _buildCurrentDisplaysSection() {
+        const box = new St.BoxLayout({ vertical: true, style: 'spacing: 4px; padding: 12px; border-radius: 8px; background-color: rgba(255,255,255,0.06);' });
+        box.add_child(new St.Label({ text: 'Current Displays', style: 'font-weight: bold;' }));
+
+        for (const display of this._extension._getDisplayInfos())
+            box.add_child(new St.Label({ text: `${display.displayNumber}. ${display.label} · ${this._extension._formatOrientation(display.orientation)} · ${display.workArea.width}x${display.workArea.height}` }));
 
         return box;
     }
 
     _buildPresetGroup(group) {
-        const box = new St.BoxLayout({
-            vertical: true,
-            style: 'spacing: 6px;',
-        });
-
-        box.add_child(new St.Label({
-            text: group.title,
-            style: 'font-weight: bold; padding-top: 6px;',
-        }));
+        const box = new St.BoxLayout({ vertical: true, style: 'spacing: 6px;' });
+        box.add_child(new St.Label({ text: group.title, style: 'font-weight: bold; padding-top: 6px;' }));
 
         for (const presetName of group.presets) {
             const definition = PRESET_DEFINITIONS[presetName];
-            const button = new St.Button({
-                label: this._formatPresetButtonLabel(presetName, definition),
-                can_focus: true,
-                style: 'padding: 8px 12px; border-radius: 6px; background-color: rgba(255,255,255,0.10); text-align: left;',
-            });
-
+            const button = new St.Button({ label: this._formatPresetButtonLabel(presetName, definition), can_focus: true, style: 'padding: 8px 12px; border-radius: 6px; background-color: rgba(255,255,255,0.10); text-align: left;' });
             button.connect('clicked', () => {
                 this.close();
                 this._extension._debugLog(`popup: selected preset ${presetName}`);
                 this._extension._applyPresetToFocusedWindow(presetName);
             });
-
             box.add_child(button);
         }
 
@@ -316,28 +220,15 @@ class PresetPopupDialog extends ModalDialog.ModalDialog {
     }
 
     _buildCustomPresetGroup(customPresets) {
-        const box = new St.BoxLayout({
-            vertical: true,
-            style: 'spacing: 6px;',
-        });
-
-        box.add_child(new St.Label({
-            text: 'Saved Presets',
-            style: 'font-weight: bold; padding-top: 6px;',
-        }));
+        const box = new St.BoxLayout({ vertical: true, style: 'spacing: 6px;' });
+        box.add_child(new St.Label({ text: 'Saved Presets', style: 'font-weight: bold; padding-top: 6px;' }));
 
         for (const preset of customPresets) {
-            const button = new St.Button({
-                label: `${preset.name} — ${preset.width}x${preset.height} @ +${preset.x},+${preset.y}`,
-                can_focus: true,
-                style: 'padding: 8px 12px; border-radius: 6px; background-color: rgba(255,255,255,0.10); text-align: left;',
-            });
-
+            const button = new St.Button({ label: this._extension._formatCustomPresetButtonLabel(preset), can_focus: true, style: 'padding: 8px 12px; border-radius: 6px; background-color: rgba(255,255,255,0.10); text-align: left;' });
             button.connect('clicked', () => {
                 this.close();
                 this._extension._applyCustomPresetToFocusedWindow(preset);
             });
-
             box.add_child(button);
         }
 
@@ -345,22 +236,10 @@ class PresetPopupDialog extends ModalDialog.ModalDialog {
     }
 
     _buildActionsSection() {
-        const box = new St.BoxLayout({
-            vertical: true,
-            style: 'spacing: 6px;',
-        });
+        const box = new St.BoxLayout({ vertical: true, style: 'spacing: 6px;' });
+        box.add_child(new St.Label({ text: 'Actions', style: 'font-weight: bold; padding-top: 6px;' }));
 
-        box.add_child(new St.Label({
-            text: 'Actions',
-            style: 'font-weight: bold; padding-top: 6px;',
-        }));
-
-        const button = new St.Button({
-            label: 'Save Current Window As Preset',
-            can_focus: true,
-            style: 'padding: 8px 12px; border-radius: 6px; background-color: rgba(255,255,255,0.10); text-align: left;',
-        });
-
+        const button = new St.Button({ label: 'Save Current Window As Preset', can_focus: true, style: 'padding: 8px 12px; border-radius: 6px; background-color: rgba(255,255,255,0.10); text-align: left;' });
         button.connect('clicked', () => {
             this.close();
             this._extension._openSavePresetDialog();
@@ -405,40 +284,19 @@ export default class UbuntuWaylandSizerExtension extends Extension {
             this._debugLog(`enable: settings loaded from metadata settings-schema; debug-logging=${this._debugLogging}`);
 
             for (const [keybindingName, presetName] of PRESET_KEYBINDINGS) {
-                Main.wm.addKeybinding(
-                    keybindingName,
-                    this._settings,
-                    Meta.KeyBindingFlags.NONE,
-                    Shell.ActionMode.NORMAL,
-                    () => this._applyPresetToFocusedWindow(presetName)
-                );
-
+                Main.wm.addKeybinding(keybindingName, this._settings, Meta.KeyBindingFlags.NONE, Shell.ActionMode.NORMAL, () => this._applyPresetToFocusedWindow(presetName));
                 this._registeredKeybindings.push(keybindingName);
                 this._debugLog(`enable: keybinding registered: ${keybindingName} -> ${presetName}`);
             }
 
             for (const [keybindingName, direction] of CYCLE_KEYBINDINGS) {
-                Main.wm.addKeybinding(
-                    keybindingName,
-                    this._settings,
-                    Meta.KeyBindingFlags.NONE,
-                    Shell.ActionMode.NORMAL,
-                    () => this._cycleCenterPreset(direction)
-                );
-
+                Main.wm.addKeybinding(keybindingName, this._settings, Meta.KeyBindingFlags.NONE, Shell.ActionMode.NORMAL, () => this._cycleCenterPreset(direction));
                 this._registeredKeybindings.push(keybindingName);
                 this._debugLog(`enable: keybinding registered: ${keybindingName} -> center-cycle(${direction})`);
             }
 
             for (const keybindingName of POPUP_KEYBINDINGS) {
-                Main.wm.addKeybinding(
-                    keybindingName,
-                    this._settings,
-                    Meta.KeyBindingFlags.NONE,
-                    Shell.ActionMode.NORMAL,
-                    () => this._openPresetPopup()
-                );
-
+                Main.wm.addKeybinding(keybindingName, this._settings, Meta.KeyBindingFlags.NONE, Shell.ActionMode.NORMAL, () => this._openPresetPopup());
                 this._registeredKeybindings.push(keybindingName);
                 this._debugLog(`enable: keybinding registered: ${keybindingName} -> preset-popup`);
             }
@@ -493,7 +351,6 @@ export default class UbuntuWaylandSizerExtension extends Extension {
 
     _openPresetPopup() {
         this._debugLog('popup: open requested');
-
         const window = global.display.get_focus_window();
 
         if (!window) {
@@ -509,14 +366,8 @@ export default class UbuntuWaylandSizerExtension extends Extension {
         try {
             this._closePresetPopupDialog('replace');
             this._closeSavePresetDialog('replace');
-
             const context = this._getWindowContext(window);
-            this._debugLog(
-                `popup: context monitor=${context.monitorIndex}, ` +
-                `workarea=${context.workArea.x},${context.workArea.y} ${context.workArea.width}x${context.workArea.height}, ` +
-                `frame=${context.frameRect.x},${context.frameRect.y} ${context.frameRect.width}x${context.frameRect.height}`
-            );
-
+            this._debugLog(`popup: context monitor=${context.monitorIndex}, workarea=${context.workArea.x},${context.workArea.y} ${context.workArea.width}x${context.workArea.height}, frame=${context.frameRect.x},${context.frameRect.y} ${context.frameRect.width}x${context.frameRect.height}`);
             this._presetPopupDialog = new PresetPopupDialog(this, window, context);
             this._presetPopupDialog.open();
         } catch (error) {
@@ -528,7 +379,6 @@ export default class UbuntuWaylandSizerExtension extends Extension {
     _closePresetPopupDialog(reason) {
         const dialog = this._presetPopupDialog;
         this._presetPopupDialog = null;
-
         if (!dialog)
             return;
 
@@ -557,7 +407,6 @@ export default class UbuntuWaylandSizerExtension extends Extension {
     _closeSavePresetDialog(reason) {
         const dialog = this._savePresetDialog;
         this._savePresetDialog = null;
-
         if (!dialog)
             return;
 
@@ -575,7 +424,22 @@ export default class UbuntuWaylandSizerExtension extends Extension {
     }
 
     _normalizeCustomPresetName(name) {
-        return String(name ?? '').trim().slice(0, CUSTOM_PRESET_NAME_MAX_LENGTH);
+        return String(name ?? '').replace(/[\u0000-\u001f\u007f]/g, '').trim().slice(0, CUSTOM_PRESET_NAME_MAX_LENGTH);
+    }
+
+    _validateCustomPresetName(name) {
+        const raw = String(name ?? '');
+        const withoutControlCharacters = raw.replace(/[\u0000-\u001f\u007f]/g, '');
+        const normalized = withoutControlCharacters.trim().slice(0, CUSTOM_PRESET_NAME_MAX_LENGTH);
+
+        if (!normalized) {
+            if (raw.trim())
+                return { ok: false, reason: 'preset name has no visible characters', message: 'Please use a visible preset name.' };
+
+            return { ok: false, reason: 'preset name is empty', message: 'Please enter a preset name.' };
+        }
+
+        return { ok: true, name: normalized };
     }
 
     _readCustomPresets() {
@@ -590,13 +454,10 @@ export default class UbuntuWaylandSizerExtension extends Extension {
 
         try {
             const parsed = JSON.parse(rawJson || '{"version":1,"presets":[]}');
-
             if (parsed?.version !== CUSTOM_PRESETS_VERSION || !Array.isArray(parsed.presets))
                 return [];
 
-            return parsed.presets
-                .map(preset => this._validateCustomPreset(preset))
-                .filter(preset => preset !== null);
+            return parsed.presets.map(preset => this._validateCustomPreset(preset)).filter(preset => preset !== null);
         } catch (error) {
             console.error(`${LOG_PREFIX} custom-preset: failed to parse ${CUSTOM_PRESETS_KEY}: ${this._formatError(error)}`);
             return [];
@@ -604,10 +465,7 @@ export default class UbuntuWaylandSizerExtension extends Extension {
     }
 
     _writeCustomPresets(presets) {
-        const payload = {
-            version: CUSTOM_PRESETS_VERSION,
-            presets,
-        };
+        const payload = { version: CUSTOM_PRESETS_VERSION, presets };
 
         try {
             this._settings?.set_string(CUSTOM_PRESETS_KEY, JSON.stringify(payload));
@@ -627,8 +485,14 @@ export default class UbuntuWaylandSizerExtension extends Extension {
         const y = Number.parseInt(preset.y, 10);
         const width = Number.parseInt(preset.width, 10);
         const height = Number.parseInt(preset.height, 10);
-        const workareaWidth = Number.parseInt(preset.workareaWidth, 10);
-        const workareaHeight = Number.parseInt(preset.workareaHeight, 10);
+        const legacyWorkareaWidth = Number.parseInt(preset.workareaWidth, 10);
+        const legacyWorkareaHeight = Number.parseInt(preset.workareaHeight, 10);
+        const originMonitorIndex = Number.parseInt(preset.originMonitorIndex, 10);
+        const originDisplayNumber = Number.parseInt(preset.originDisplayNumber, 10);
+        const originWorkareaX = Number.parseInt(preset.originWorkareaX, 10);
+        const originWorkareaY = Number.parseInt(preset.originWorkareaY, 10);
+        const originWorkareaWidth = Number.parseInt(preset.originWorkareaWidth, 10);
+        const originWorkareaHeight = Number.parseInt(preset.originWorkareaHeight, 10);
         const createdAt = Number.parseInt(preset.createdAt, 10) || 0;
 
         if (!id || !name || kind !== CUSTOM_PRESET_KIND)
@@ -640,6 +504,13 @@ export default class UbuntuWaylandSizerExtension extends Extension {
         if (width <= 0 || height <= 0)
             return null;
 
+        const resolvedOriginWidth = Number.isFinite(originWorkareaWidth) && originWorkareaWidth > 0
+            ? originWorkareaWidth
+            : (Number.isFinite(legacyWorkareaWidth) && legacyWorkareaWidth > 0 ? legacyWorkareaWidth : width);
+        const resolvedOriginHeight = Number.isFinite(originWorkareaHeight) && originWorkareaHeight > 0
+            ? originWorkareaHeight
+            : (Number.isFinite(legacyWorkareaHeight) && legacyWorkareaHeight > 0 ? legacyWorkareaHeight : height);
+
         return {
             id,
             name,
@@ -648,8 +519,14 @@ export default class UbuntuWaylandSizerExtension extends Extension {
             y,
             width,
             height,
-            workareaWidth: Number.isFinite(workareaWidth) && workareaWidth > 0 ? workareaWidth : width,
-            workareaHeight: Number.isFinite(workareaHeight) && workareaHeight > 0 ? workareaHeight : height,
+            originMonitorIndex: Number.isFinite(originMonitorIndex) && originMonitorIndex >= 0 ? originMonitorIndex : UNKNOWN_MONITOR_INDEX,
+            originDisplayNumber: Number.isFinite(originDisplayNumber) && originDisplayNumber > 0 ? originDisplayNumber : null,
+            originDisplayLabel: this._normalizeDisplayLabel(preset.originDisplayLabel ?? ''),
+            originWorkareaX: Number.isFinite(originWorkareaX) ? originWorkareaX : 0,
+            originWorkareaY: Number.isFinite(originWorkareaY) ? originWorkareaY : 0,
+            originWorkareaWidth: resolvedOriginWidth,
+            originWorkareaHeight: resolvedOriginHeight,
+            originOrientation: this._normalizeOrientation(preset.originOrientation, resolvedOriginWidth, resolvedOriginHeight),
             createdAt,
         };
     }
@@ -665,44 +542,46 @@ export default class UbuntuWaylandSizerExtension extends Extension {
         const context = this._getWindowContext(window);
         const preset = this._createCustomPresetFromContext(name, context);
         const presets = this._readCustomPresets();
-
         presets.push(preset);
         this._writeCustomPresets(presets);
 
-        this._debugLog(
-            `custom-preset: saved preset id=${preset.id}, name=${preset.name}, ` +
-            `geometry=${preset.x},${preset.y} ${preset.width}x${preset.height}`
-        );
+        this._debugLog(`custom-preset: saved preset id=${preset.id}, name=${preset.name}, display=${preset.originDisplayNumber}, geometry=${preset.x},${preset.y} ${preset.width}x${preset.height}`);
     }
 
     _createCustomPresetFromContext(name, context) {
-        const { workArea, frameRect } = context;
+        const { monitorIndex, workArea, frameRect } = context;
         const nowSeconds = Math.floor(Date.now() / 1000);
+        const displayInfo = this._getDisplayInfoForMonitor(monitorIndex);
+        const visibleRect = this._intersectGeometryWithWorkArea(frameRect, workArea);
 
         return {
             id: `custom-${nowSeconds}-${Math.floor(Math.random() * 100000)}`,
             name,
             kind: CUSTOM_PRESET_KIND,
-            x: frameRect.x - workArea.x,
-            y: frameRect.y - workArea.y,
-            width: frameRect.width,
-            height: frameRect.height,
-            workareaWidth: workArea.width,
-            workareaHeight: workArea.height,
+            x: visibleRect.x - workArea.x,
+            y: visibleRect.y - workArea.y,
+            width: visibleRect.width,
+            height: visibleRect.height,
+            originMonitorIndex: monitorIndex,
+            originDisplayNumber: displayInfo.displayNumber,
+            originDisplayLabel: displayInfo.label,
+            originWorkareaX: workArea.x,
+            originWorkareaY: workArea.y,
+            originWorkareaWidth: workArea.width,
+            originWorkareaHeight: workArea.height,
+            originOrientation: this._getOrientation(workArea.width, workArea.height),
             createdAt: nowSeconds,
         };
     }
 
     _applyCustomPresetToFocusedWindow(preset) {
         const validPreset = this._validateCustomPreset(preset);
-
         if (!validPreset) {
             this._debugLog('custom-preset: apply ignored because preset is invalid');
             return;
         }
 
         this._debugLog(`custom-preset: applying preset id=${validPreset.id}, name=${validPreset.name}`);
-
         const window = global.display.get_focus_window();
 
         if (!window || window.window_type !== Meta.WindowType.NORMAL) {
@@ -710,30 +589,25 @@ export default class UbuntuWaylandSizerExtension extends Extension {
             return;
         }
 
-        const context = this._getWindowContext(window);
+        const targetContext = this._resolveCustomPresetTargetContext(window, validPreset);
+        const currentContext = this._getWindowContext(window);
 
-        if (this._isEffectivelyFullWorkarea(window, context.workArea, context.frameRect)) {
-            this._breakOutFromFullWorkareaForCustomPreset(window, validPreset, context);
+        if (this._isEffectivelyFullWorkarea(window, currentContext.workArea, currentContext.frameRect)) {
+            this._breakOutFromFullWorkareaForCustomPreset(window, validPreset, targetContext);
             return;
         }
 
-        this._applyCustomPresetToWindow(window, validPreset, 'direct');
+        this._applyCustomPresetToWindow(window, validPreset, targetContext, 'direct');
     }
 
-    _breakOutFromFullWorkareaForCustomPreset(window, preset, context) {
-        this._debugLog(
-            `custom-preset: full-workarea state detected; breaking out before preset ${preset.name}: ` +
-            `monitor=${context.monitorIndex}, ` +
-            `workarea=${context.workArea.x},${context.workArea.y} ${context.workArea.width}x${context.workArea.height}, ` +
-            `frame=${context.frameRect.x},${context.frameRect.y} ${context.frameRect.width}x${context.frameRect.height}`
-        );
+    _breakOutFromFullWorkareaForCustomPreset(window, preset, targetContext) {
+        this._debugLog(`custom-preset: full-workarea state detected; breaking out before preset ${preset.name}: targetMonitor=${targetContext.monitorIndex}`);
 
         try {
             this._unmakeFullscreenBestEffort(window);
             this._unmaximizeBestEffort(window);
-            this._moveToMonitorBestEffort(window, context.monitorIndex);
-
-            const safeRect = this._calculateSafeRestoreGeometry(context.workArea);
+            this._moveToMonitorBestEffort(window, targetContext.monitorIndex);
+            const safeRect = this._calculateSafeRestoreGeometry(targetContext.workArea);
             window.move_frame(true, safeRect.x, safeRect.y);
             window.move_resize_frame(true, safeRect.x, safeRect.y, safeRect.width, safeRect.height);
         } catch (error) {
@@ -741,50 +615,205 @@ export default class UbuntuWaylandSizerExtension extends Extension {
         }
 
         this._scheduleTimeout(POST_UNMAXIMIZE_RESIZE_DELAY_MS, () => {
-            this._applyCustomPresetToWindow(window, preset, 'after-full-workarea-breakout');
+            const refreshedTargetContext = this._resolveCustomPresetTargetContext(window, preset);
+            this._applyCustomPresetToWindow(window, preset, refreshedTargetContext, 'after-full-workarea-breakout');
         });
     }
 
-    _applyCustomPresetToWindow(window, preset, reason) {
-        const context = this._getWindowContext(window);
-        const target = this._calculateCustomPresetGeometry(preset, context.workArea);
+    _applyCustomPresetToWindow(window, preset, targetContext, reason) {
+        const target = this._calculateCustomPresetGeometry(preset, targetContext.workArea);
+        const currentContext = this._getWindowContext(window);
 
-        this._debugLog(
-            `custom-preset: geometry context (${reason}): ` +
-            `monitor=${context.monitorIndex}, ` +
-            `workarea=${context.workArea.x},${context.workArea.y} ${context.workArea.width}x${context.workArea.height}, ` +
-            `frame=${context.frameRect.x},${context.frameRect.y} ${context.frameRect.width}x${context.frameRect.height}`
-        );
+        this._debugLog(`custom-preset: geometry context (${reason}): currentMonitor=${currentContext.monitorIndex}, targetMonitor=${targetContext.monitorIndex}, originAvailable=${targetContext.originAvailable}, targetWorkarea=${targetContext.workArea.x},${targetContext.workArea.y} ${targetContext.workArea.width}x${targetContext.workArea.height}, frame=${currentContext.frameRect.x},${currentContext.frameRect.y} ${currentContext.frameRect.width}x${currentContext.frameRect.height}`);
 
         if (!this._isUsableGeometry(target)) {
-            console.error(
-                `${LOG_PREFIX} custom-preset: invalid target geometry for ${preset.name}: ` +
-                `${target.x},${target.y} ${target.width}x${target.height}`
-            );
+            console.error(`${LOG_PREFIX} custom-preset: invalid target geometry for ${preset.name}: ${target.x},${target.y} ${target.width}x${target.height}`);
             return;
         }
 
         try {
-            this._moveToMonitorBestEffort(window, context.monitorIndex);
+            this._moveToMonitorBestEffort(window, targetContext.monitorIndex);
             window.move_frame(true, target.x, target.y);
             window.move_resize_frame(true, target.x, target.y, target.width, target.height);
-
-            this._debugLog(
-                `custom-preset: applied preset ${preset.name}: ` +
-                `${target.x},${target.y} ${target.width}x${target.height}`
-            );
+            this._debugLog(`custom-preset: applied preset ${preset.name}: ${target.x},${target.y} ${target.width}x${target.height}`);
         } catch (error) {
             console.error(`${LOG_PREFIX} custom-preset: move_resize_frame failed for ${preset.name}: ${this._formatError(error)}`);
         }
     }
 
+    _resolveCustomPresetTargetContext(window, preset) {
+        const currentContext = this._getWindowContext(window);
+        const displayInfos = this._getDisplayInfos();
+
+        if (displayInfos.length <= 1)
+            return { monitorIndex: currentContext.monitorIndex, workArea: currentContext.workArea, originAvailable: true, reason: 'single-logical-display' };
+
+        const originByIndex = displayInfos.find(display => display.monitorIndex === preset.originMonitorIndex);
+        if (originByIndex)
+            return { monitorIndex: originByIndex.monitorIndex, workArea: originByIndex.workArea, originAvailable: true, reason: 'origin-monitor-index' };
+
+        const originByShape = displayInfos.find(display =>
+            display.workArea.width === preset.originWorkareaWidth &&
+            display.workArea.height === preset.originWorkareaHeight &&
+            display.orientation === preset.originOrientation
+        );
+
+        if (originByShape)
+            return { monitorIndex: originByShape.monitorIndex, workArea: originByShape.workArea, originAvailable: true, reason: 'origin-workarea-shape' };
+
+        return { monitorIndex: currentContext.monitorIndex, workArea: currentContext.workArea, originAvailable: false, reason: 'origin-unavailable-fallback-current' };
+    }
+
     _calculateCustomPresetGeometry(preset, workArea) {
+        const targetWidth = Math.min(preset.width, workArea.width);
+        const targetHeight = Math.min(preset.height, workArea.height);
+        const originRangeX = Math.max(1, preset.originWorkareaWidth - preset.width);
+        const originRangeY = Math.max(1, preset.originWorkareaHeight - preset.height);
+        const targetRangeX = Math.max(0, workArea.width - targetWidth);
+        const targetRangeY = Math.max(0, workArea.height - targetHeight);
+        const xRatio = this._clampNumber(preset.x / originRangeX, 0, 1);
+        const yRatio = this._clampNumber(preset.y / originRangeY, 0, 1);
+
         return this._clampGeometryToWorkArea({
-            x: workArea.x + preset.x,
-            y: workArea.y + preset.y,
-            width: Math.min(preset.width, workArea.width),
-            height: Math.min(preset.height, workArea.height),
+            x: workArea.x + Math.round(targetRangeX * xRatio),
+            y: workArea.y + Math.round(targetRangeY * yRatio),
+            width: targetWidth,
+            height: targetHeight,
         }, workArea);
+    }
+
+    _formatCustomPresetButtonLabel(preset) {
+        const displayInfos = this._getDisplayInfos();
+
+        if (displayInfos.length <= 1)
+            return `${preset.name} — Current Display · ${preset.width}x${preset.height}`;
+
+        const origin = this._resolveDisplayInfoForPreset(preset, displayInfos);
+        const unavailable = origin.available ? '' : ' · unavailable';
+        return `${preset.name} — ${origin.displayNumber}. ${origin.label} · ${this._formatOrientation(origin.orientation)}${unavailable} · ${preset.width}x${preset.height}`;
+    }
+
+    _resolveDisplayInfoForPreset(preset, displayInfos) {
+        const byIndex = displayInfos.find(display => display.monitorIndex === preset.originMonitorIndex);
+        if (byIndex)
+            return { ...byIndex, available: true };
+
+        const byShape = displayInfos.find(display =>
+            display.workArea.width === preset.originWorkareaWidth &&
+            display.workArea.height === preset.originWorkareaHeight &&
+            display.orientation === preset.originOrientation
+        );
+        if (byShape)
+            return { ...byShape, available: true };
+
+        return {
+            displayNumber: preset.originDisplayNumber ?? (preset.originMonitorIndex >= 0 ? preset.originMonitorIndex + 1 : 1),
+            label: preset.originDisplayLabel || `Display ${preset.originMonitorIndex >= 0 ? preset.originMonitorIndex + 1 : '?'}`,
+            orientation: preset.originOrientation,
+            workArea: { width: preset.originWorkareaWidth, height: preset.originWorkareaHeight },
+            monitorIndex: preset.originMonitorIndex,
+            available: false,
+        };
+    }
+
+    _getDisplayInfos() {
+        const workspace = global.workspace_manager.get_active_workspace();
+        const monitors = Main.layoutManager?.monitors ?? [];
+        const count = monitors.length || global.display.get_n_monitors?.() || 1;
+        const infos = [];
+
+        for (let monitorIndex = 0; monitorIndex < count; monitorIndex++) {
+            try {
+                const workArea = workspace.get_work_area_for_monitor(monitorIndex);
+                const monitor = monitors[monitorIndex] ?? {};
+                const label = this._extractMonitorLabel(monitor, monitorIndex);
+                infos.push({
+                    monitorIndex,
+                    displayNumber: monitorIndex + 1,
+                    label,
+                    workArea,
+                    orientation: this._getOrientation(workArea.width, workArea.height),
+                });
+            } catch (error) {
+                this._debugLog(`display: failed to inspect monitor ${monitorIndex}: ${this._formatError(error)}`);
+            }
+        }
+
+        return infos.length ? infos : [{
+            monitorIndex: 0,
+            displayNumber: 1,
+            label: 'Display 1',
+            workArea: workspace.get_work_area_for_monitor(0),
+            orientation: 'landscape',
+        }];
+    }
+
+    _getDisplayInfoForMonitor(monitorIndex) {
+        return this._getDisplayInfos().find(display => display.monitorIndex === monitorIndex) ?? {
+            monitorIndex,
+            displayNumber: monitorIndex + 1,
+            label: `Display ${monitorIndex + 1}`,
+            workArea: { width: 1, height: 1 },
+            orientation: 'landscape',
+        };
+    }
+
+    _extractMonitorLabel(monitor, monitorIndex) {
+        const candidates = [
+            monitor?.displayName,
+            monitor?.display_name,
+            monitor?.name,
+            monitor?.product,
+            monitor?.vendor,
+            monitor?.connector,
+        ];
+
+        for (const candidate of candidates) {
+            const label = this._normalizeDisplayLabel(candidate ?? '');
+            if (label)
+                return label;
+        }
+
+        return `Display ${monitorIndex + 1}`;
+    }
+
+    _normalizeDisplayLabel(label) {
+        return String(label ?? '').replace(/[\u0000-\u001f\u007f]/g, '').trim().slice(0, 80);
+    }
+
+    _normalizeOrientation(orientation, width, height) {
+        const value = String(orientation ?? '').toLowerCase();
+        if (value === 'portrait' || value === 'landscape')
+            return value;
+
+        return this._getOrientation(width, height);
+    }
+
+    _getOrientation(width, height) {
+        return height > width ? 'portrait' : 'landscape';
+    }
+
+    _formatOrientation(orientation) {
+        return orientation === 'portrait' ? 'Portrait' : 'Landscape';
+    }
+
+    _intersectGeometryWithWorkArea(geometry, workArea) {
+        const x1 = Math.max(geometry.x, workArea.x);
+        const y1 = Math.max(geometry.y, workArea.y);
+        const x2 = Math.min(geometry.x + geometry.width, workArea.x + workArea.width);
+        const y2 = Math.min(geometry.y + geometry.height, workArea.y + workArea.height);
+
+        if (x2 <= x1 || y2 <= y1)
+            return this._calculateSafeRestoreGeometry(workArea);
+
+        return { x: x1, y: y1, width: x2 - x1, height: y2 - y1 };
+    }
+
+    _clampNumber(value, min, max) {
+        if (!Number.isFinite(value))
+            return min;
+
+        return Math.max(min, Math.min(value, max));
     }
 
     _cycleCenterPreset(direction) {
@@ -796,31 +825,22 @@ export default class UbuntuWaylandSizerExtension extends Extension {
         const currentIndex = this._resolveCenterCycleIndex();
         const nextIndex = this._wrapCycleIndex(currentIndex + direction, CENTER_CYCLE_PRESETS.length);
         const nextPreset = CENTER_CYCLE_PRESETS[nextIndex];
-
         this._centerCycleIndex = nextIndex;
-        this._debugLog(
-            `action: center cycle ${direction > 0 ? 'next' : 'previous'}: ` +
-            `index=${nextIndex}, preset=${nextPreset}`
-        );
-
+        this._debugLog(`action: center cycle ${direction > 0 ? 'next' : 'previous'}: index=${nextIndex}, preset=${nextPreset}`);
         this._applyPresetToFocusedWindow(nextPreset);
     }
 
     _resolveCenterCycleIndex() {
         const inferredIndex = this._inferCenterCycleIndexFromFocusedWindow();
-
         if (inferredIndex !== UNKNOWN_CYCLE_INDEX)
             return inferredIndex;
-
         if (this._isValidCenterCycleIndex(this._centerCycleIndex))
             return this._centerCycleIndex;
-
         return this._wrapCycleIndex(UNKNOWN_CYCLE_INDEX, CENTER_CYCLE_PRESETS.length);
     }
 
     _inferCenterCycleIndexFromFocusedWindow() {
         const window = global.display.get_focus_window();
-
         if (!window || window.window_type !== Meta.WindowType.NORMAL)
             return UNKNOWN_CYCLE_INDEX;
 
@@ -831,7 +851,6 @@ export default class UbuntuWaylandSizerExtension extends Extension {
             for (let index = 0; index < CENTER_CYCLE_PRESETS.length; index++) {
                 const presetName = CENTER_CYCLE_PRESETS[index];
                 const target = this._calculatePresetGeometry(presetName, context.workArea, frameRect);
-
                 if (target && this._isNearlySameFrame(frameRect, target)) {
                     this._debugLog(`action: inferred center cycle index=${index}, preset=${presetName}`);
                     return index;
@@ -854,17 +873,14 @@ export default class UbuntuWaylandSizerExtension extends Extension {
 
     _rememberCenterCyclePreset(presetName) {
         const index = CENTER_CYCLE_PRESETS.indexOf(presetName);
-
         if (index === -1)
             return;
-
         this._centerCycleIndex = index;
         this._debugLog(`action: remembered center cycle index=${index}, preset=${presetName}`);
     }
 
     _applyPresetToFocusedWindow(presetName) {
         this._debugLog(`action: preset triggered: ${presetName}`);
-
         const window = global.display.get_focus_window();
 
         if (!window) {
@@ -878,7 +894,6 @@ export default class UbuntuWaylandSizerExtension extends Extension {
         }
 
         const context = this._getWindowContext(window);
-
         if (presetName !== PRESETS.FULL && this._isEffectivelyFullWorkarea(window, context.workArea, context.frameRect)) {
             this._breakOutFromFullWorkarea(window, presetName, context);
             return;
@@ -888,27 +903,16 @@ export default class UbuntuWaylandSizerExtension extends Extension {
     }
 
     _breakOutFromFullWorkarea(window, presetName, context) {
-        this._debugLog(
-            `action: full-workarea state detected; ` +
-            `breaking out before preset ${presetName}: ` +
-            `monitor=${context.monitorIndex}, ` +
-            `workarea=${context.workArea.x},${context.workArea.y} ${context.workArea.width}x${context.workArea.height}, ` +
-            `frame=${context.frameRect.x},${context.frameRect.y} ${context.frameRect.width}x${context.frameRect.height}`
-        );
+        this._debugLog(`action: full-workarea state detected; breaking out before preset ${presetName}: monitor=${context.monitorIndex}, workarea=${context.workArea.x},${context.workArea.y} ${context.workArea.width}x${context.workArea.height}, frame=${context.frameRect.x},${context.frameRect.y} ${context.frameRect.width}x${context.frameRect.height}`);
 
         try {
             this._unmakeFullscreenBestEffort(window);
             this._unmaximizeBestEffort(window);
             this._moveToMonitorBestEffort(window, context.monitorIndex);
-
             const safeRect = this._calculateSafeRestoreGeometry(context.workArea);
             window.move_frame(true, safeRect.x, safeRect.y);
             window.move_resize_frame(true, safeRect.x, safeRect.y, safeRect.width, safeRect.height);
-
-            this._debugLog(
-                `action: applied safe restore before preset ${presetName}: ` +
-                `${safeRect.x},${safeRect.y} ${safeRect.width}x${safeRect.height}`
-            );
+            this._debugLog(`action: applied safe restore before preset ${presetName}: ${safeRect.x},${safeRect.y} ${safeRect.width}x${safeRect.height}`);
         } catch (error) {
             console.error(`${LOG_PREFIX} action: safe restore failed before preset ${presetName}: ${this._formatError(error)}`);
         }
@@ -921,13 +925,7 @@ export default class UbuntuWaylandSizerExtension extends Extension {
     _applyPresetToWindow(window, presetName, reason) {
         const context = this._getWindowContext(window);
         const target = this._calculatePresetGeometry(presetName, context.workArea, context.frameRect);
-
-        this._debugLog(
-            `action: geometry context (${reason}): ` +
-            `monitor=${context.monitorIndex}, ` +
-            `workarea=${context.workArea.x},${context.workArea.y} ${context.workArea.width}x${context.workArea.height}, ` +
-            `frame=${context.frameRect.x},${context.frameRect.y} ${context.frameRect.width}x${context.frameRect.height}`
-        );
+        this._debugLog(`action: geometry context (${reason}): monitor=${context.monitorIndex}, workarea=${context.workArea.x},${context.workArea.y} ${context.workArea.width}x${context.workArea.height}, frame=${context.frameRect.x},${context.frameRect.y} ${context.frameRect.width}x${context.frameRect.height}`);
 
         if (!target) {
             this._debugLog(`action: unknown preset: ${presetName}`);
@@ -935,10 +933,7 @@ export default class UbuntuWaylandSizerExtension extends Extension {
         }
 
         if (!this._isUsableGeometry(target)) {
-            console.error(
-                `${LOG_PREFIX} action: invalid target geometry for ${presetName}: ` +
-                `${target.x},${target.y} ${target.width}x${target.height}`
-            );
+            console.error(`${LOG_PREFIX} action: invalid target geometry for ${presetName}: ${target.x},${target.y} ${target.width}x${target.height}`);
             return;
         }
 
@@ -946,19 +941,11 @@ export default class UbuntuWaylandSizerExtension extends Extension {
             this._moveToMonitorBestEffort(window, context.monitorIndex);
             window.move_frame(true, target.x, target.y);
             window.move_resize_frame(true, target.x, target.y, target.width, target.height);
-
             this._rememberCenterCyclePreset(presetName);
-            this._debugLog(
-                `action: applied preset ${presetName}: ` +
-                `${target.x},${target.y} ${target.width}x${target.height}`
-            );
-
+            this._debugLog(`action: applied preset ${presetName}: ${target.x},${target.y} ${target.width}x${target.height}`);
             this._schedulePostResizeCorrection(window, presetName, context.workArea, target);
         } catch (error) {
-            console.error(
-                `${LOG_PREFIX} action: move_resize_frame failed for ${presetName}: ` +
-                `${this._formatError(error)}`
-            );
+            console.error(`${LOG_PREFIX} action: move_resize_frame failed for ${presetName}: ${this._formatError(error)}`);
         }
     }
 
@@ -967,7 +954,6 @@ export default class UbuntuWaylandSizerExtension extends Extension {
         const workspace = global.workspace_manager.get_active_workspace();
         const workArea = workspace.get_work_area_for_monitor(monitorIndex);
         const frameRect = window.get_frame_rect();
-
         return { monitorIndex, workspace, workArea, frameRect };
     }
 
@@ -981,15 +967,11 @@ export default class UbuntuWaylandSizerExtension extends Extension {
     }
 
     _scheduleTimeout(delayMs, callback) {
-        const sourceId = GLib.timeout_add(
-            GLib.PRIORITY_DEFAULT,
-            delayMs,
-            () => {
-                this._pendingTimeoutIds = this._pendingTimeoutIds.filter(id => id !== sourceId);
-                callback();
-                return GLib.SOURCE_REMOVE;
-            }
-        );
+        const sourceId = GLib.timeout_add(GLib.PRIORITY_DEFAULT, delayMs, () => {
+            this._pendingTimeoutIds = this._pendingTimeoutIds.filter(id => id !== sourceId);
+            callback();
+            return GLib.SOURCE_REMOVE;
+        });
 
         this._pendingTimeoutIds.push(sourceId);
         return sourceId;
@@ -1000,16 +982,11 @@ export default class UbuntuWaylandSizerExtension extends Extension {
             const actualFrame = window.get_frame_rect();
 
             if (this._isFrameNearlyEqualToWorkArea(actualFrame, workArea) && !this._isFrameNearlySameGeometry(actualFrame, requestedTarget)) {
-                this._debugLog(
-                    `action: resize rejected for ${presetName}; retrying requested target ` +
-                    `(attempt=${attempt}): actual=${actualFrame.x},${actualFrame.y} ${actualFrame.width}x${actualFrame.height}, ` +
-                    `requested=${requestedTarget.x},${requestedTarget.y} ${requestedTarget.width}x${requestedTarget.height}`
-                );
+                this._debugLog(`action: resize rejected for ${presetName}; retrying requested target (attempt=${attempt}): actual=${actualFrame.x},${actualFrame.y} ${actualFrame.width}x${actualFrame.height}, requested=${requestedTarget.x},${requestedTarget.y} ${requestedTarget.width}x${requestedTarget.height}`);
 
                 if (attempt <= 2) {
                     window.move_frame(true, requestedTarget.x, requestedTarget.y);
                     window.move_resize_frame(true, requestedTarget.x, requestedTarget.y, requestedTarget.width, requestedTarget.height);
-
                     this._scheduleTimeout(POST_RESIZE_CORRECTION_DELAY_MS, () => {
                         this._postResizeCorrection(window, presetName, workArea, requestedTarget, attempt + 1);
                     });
@@ -1017,38 +994,18 @@ export default class UbuntuWaylandSizerExtension extends Extension {
                 return;
             }
 
-            const correctedTarget = this._calculateCorrectionGeometry(
-                presetName,
-                workArea,
-                requestedTarget,
-                actualFrame
-            );
-
+            const correctedTarget = this._calculateCorrectionGeometry(presetName, workArea, requestedTarget, actualFrame);
             if (!correctedTarget || !this._isUsableGeometry(correctedTarget))
                 return;
 
             if (this._isNearlySameFrame(actualFrame, correctedTarget)) {
-                this._debugLog(
-                    `action: post-correction not needed for ${presetName}: ` +
-                    `actual=${actualFrame.x},${actualFrame.y} ${actualFrame.width}x${actualFrame.height}`
-                );
+                this._debugLog(`action: post-correction not needed for ${presetName}: actual=${actualFrame.x},${actualFrame.y} ${actualFrame.width}x${actualFrame.height}`);
                 return;
             }
 
             window.move_frame(true, correctedTarget.x, correctedTarget.y);
-            window.move_resize_frame(
-                true,
-                correctedTarget.x,
-                correctedTarget.y,
-                correctedTarget.width,
-                correctedTarget.height
-            );
-
-            this._debugLog(
-                `action: post-corrected preset ${presetName}: ` +
-                `actual=${actualFrame.x},${actualFrame.y} ${actualFrame.width}x${actualFrame.height}, ` +
-                `corrected=${correctedTarget.x},${correctedTarget.y} ${correctedTarget.width}x${correctedTarget.height}`
-            );
+            window.move_resize_frame(true, correctedTarget.x, correctedTarget.y, correctedTarget.width, correctedTarget.height);
+            this._debugLog(`action: post-corrected preset ${presetName}: actual=${actualFrame.x},${actualFrame.y} ${actualFrame.width}x${actualFrame.height}, corrected=${correctedTarget.x},${correctedTarget.y} ${correctedTarget.width}x${correctedTarget.height}`);
         } catch (error) {
             console.error(`${LOG_PREFIX} action: post-correction failed for ${presetName}: ${this._formatError(error)}`);
         }
@@ -1059,54 +1016,27 @@ export default class UbuntuWaylandSizerExtension extends Extension {
 
         switch (definition?.type) {
         case PRESET_TYPES.LEFT_HALF:
-            return this._clampGeometryToWorkArea({
-                x: workArea.x,
-                y: workArea.y,
-                width: actualFrame.width,
-                height: actualFrame.height,
-            }, workArea);
-
+            return this._clampGeometryToWorkArea({ x: workArea.x, y: workArea.y, width: actualFrame.width, height: actualFrame.height }, workArea);
         case PRESET_TYPES.RIGHT_HALF:
-            return this._clampGeometryToWorkArea({
-                x: workArea.x + workArea.width - actualFrame.width,
-                y: workArea.y,
-                width: actualFrame.width,
-                height: actualFrame.height,
-            }, workArea);
-
+            return this._clampGeometryToWorkArea({ x: workArea.x + workArea.width - actualFrame.width, y: workArea.y, width: actualFrame.width, height: actualFrame.height }, workArea);
         case PRESET_TYPES.CUSTOM_CENTER:
         case PRESET_TYPES.FIXED_CENTER:
-            return this._clampGeometryToWorkArea({
-                x: workArea.x + Math.floor((workArea.width - actualFrame.width) / 2),
-                y: workArea.y + Math.floor((workArea.height - actualFrame.height) / 2),
-                width: actualFrame.width,
-                height: actualFrame.height,
-            }, workArea);
-
+            return this._clampGeometryToWorkArea({ x: workArea.x + Math.floor((workArea.width - actualFrame.width) / 2), y: workArea.y + Math.floor((workArea.height - actualFrame.height) / 2), width: actualFrame.width, height: actualFrame.height }, workArea);
         default:
             return requestedTarget;
         }
     }
 
     _isNearlySameFrame(frameRect, target) {
-        return Math.abs(frameRect.x - target.x) <= 1 &&
-            Math.abs(frameRect.y - target.y) <= 1 &&
-            Math.abs(frameRect.width - target.width) <= 1 &&
-            Math.abs(frameRect.height - target.height) <= 1;
+        return Math.abs(frameRect.x - target.x) <= 1 && Math.abs(frameRect.y - target.y) <= 1 && Math.abs(frameRect.width - target.width) <= 1 && Math.abs(frameRect.height - target.height) <= 1;
     }
 
     _isFrameNearlySameGeometry(frameRect, geometry) {
-        return Math.abs(frameRect.x - geometry.x) <= FULL_WORKAREA_TOLERANCE_PX &&
-            Math.abs(frameRect.y - geometry.y) <= FULL_WORKAREA_TOLERANCE_PX &&
-            Math.abs(frameRect.width - geometry.width) <= FULL_WORKAREA_TOLERANCE_PX &&
-            Math.abs(frameRect.height - geometry.height) <= FULL_WORKAREA_TOLERANCE_PX;
+        return Math.abs(frameRect.x - geometry.x) <= FULL_WORKAREA_TOLERANCE_PX && Math.abs(frameRect.y - geometry.y) <= FULL_WORKAREA_TOLERANCE_PX && Math.abs(frameRect.width - geometry.width) <= FULL_WORKAREA_TOLERANCE_PX && Math.abs(frameRect.height - geometry.height) <= FULL_WORKAREA_TOLERANCE_PX;
     }
 
     _isFrameNearlyEqualToWorkArea(frameRect, workArea) {
-        return Math.abs(frameRect.x - workArea.x) <= FULL_WORKAREA_TOLERANCE_PX &&
-            Math.abs(frameRect.y - workArea.y) <= FULL_WORKAREA_TOLERANCE_PX &&
-            Math.abs(frameRect.width - workArea.width) <= FULL_WORKAREA_TOLERANCE_PX &&
-            Math.abs(frameRect.height - workArea.height) <= FULL_WORKAREA_TOLERANCE_PX;
+        return Math.abs(frameRect.x - workArea.x) <= FULL_WORKAREA_TOLERANCE_PX && Math.abs(frameRect.y - workArea.y) <= FULL_WORKAREA_TOLERANCE_PX && Math.abs(frameRect.width - workArea.width) <= FULL_WORKAREA_TOLERANCE_PX && Math.abs(frameRect.height - workArea.height) <= FULL_WORKAREA_TOLERANCE_PX;
     }
 
     _isEffectivelyFullWorkarea(window, workArea, frameRect) {
@@ -1117,7 +1047,6 @@ export default class UbuntuWaylandSizerExtension extends Extension {
         try {
             if (window.get_maximized && window.get_maximized() !== 0)
                 return true;
-
             return Boolean(window.maximizedHorizontally && window.maximizedVertically);
         } catch (error) {
             console.error(`${LOG_PREFIX} action: failed to check maximized state: ${this._formatError(error)}`);
@@ -1138,14 +1067,12 @@ export default class UbuntuWaylandSizerExtension extends Extension {
         try {
             if (!window.unmaximize)
                 return;
-
-            if (window.unmaximize.length === 0) {
+            if (window.unmaximize.length === 0)
                 window.unmaximize();
-            } else if (window.get_maximized) {
+            else if (window.get_maximized)
                 window.unmaximize(window.get_maximized());
-            } else {
+            else
                 window.unmaximize(Meta.MaximizeFlags.BOTH);
-            }
         } catch (error) {
             console.error(`${LOG_PREFIX} action: unmaximize skipped/failed: ${this._formatError(error)}`);
         }
@@ -1163,18 +1090,11 @@ export default class UbuntuWaylandSizerExtension extends Extension {
     _calculateSafeRestoreGeometry(workArea) {
         const width = Math.max(1, Math.floor(workArea.width * 0.72));
         const height = Math.max(1, Math.floor(workArea.height * 0.72));
-
-        return this._clampGeometryToWorkArea({
-            x: workArea.x + Math.floor((workArea.width - width) / 2),
-            y: workArea.y + Math.floor((workArea.height - height) / 2),
-            width,
-            height,
-        }, workArea);
+        return this._clampGeometryToWorkArea({ x: workArea.x + Math.floor((workArea.width - width) / 2), y: workArea.y + Math.floor((workArea.height - height) / 2), width, height }, workArea);
     }
 
     _calculatePresetGeometry(presetName, workArea, frameRect) {
         const definition = PRESET_DEFINITIONS[presetName];
-
         if (!definition)
             return null;
 
@@ -1182,35 +1102,15 @@ export default class UbuntuWaylandSizerExtension extends Extension {
 
         switch (definition.type) {
         case PRESET_TYPES.LEFT_HALF:
-            return this._clampGeometryToWorkArea({
-                x: workArea.x,
-                y: workArea.y,
-                width: halfWidth,
-                height: workArea.height,
-            }, workArea);
-
+            return this._clampGeometryToWorkArea({ x: workArea.x, y: workArea.y, width: halfWidth, height: workArea.height }, workArea);
         case PRESET_TYPES.RIGHT_HALF:
-            return this._clampGeometryToWorkArea({
-                x: workArea.x + halfWidth,
-                y: workArea.y,
-                width: workArea.width - halfWidth,
-                height: workArea.height,
-            }, workArea);
-
+            return this._clampGeometryToWorkArea({ x: workArea.x + halfWidth, y: workArea.y, width: workArea.width - halfWidth, height: workArea.height }, workArea);
         case PRESET_TYPES.FULL_WORKAREA:
-            return this._clampGeometryToWorkArea({
-                x: workArea.x,
-                y: workArea.y,
-                width: workArea.width,
-                height: workArea.height,
-            }, workArea);
-
+            return this._clampGeometryToWorkArea({ x: workArea.x, y: workArea.y, width: workArea.width, height: workArea.height }, workArea);
         case PRESET_TYPES.CUSTOM_CENTER:
             return this._calculateCenterPresetGeometry(definition, workArea, this._readCenterSize());
-
         case PRESET_TYPES.FIXED_CENTER:
             return this._calculateCenterPresetGeometry(definition, workArea, definition.size);
-
         default:
             return null;
         }
@@ -1219,56 +1119,32 @@ export default class UbuntuWaylandSizerExtension extends Extension {
     _calculateCenterPresetGeometry(definition, workArea, centerSize) {
         const targetWidth = Math.min(centerSize.width, workArea.width);
         const targetHeight = Math.min(centerSize.height, workArea.height);
-
-        this._debugLog(
-            `action: ${definition.id} preset size: configured=${centerSize.width}x${centerSize.height}, ` +
-            `target=${targetWidth}x${targetHeight}`
-        );
-
-        return this._clampGeometryToWorkArea({
-            x: workArea.x + Math.floor((workArea.width - targetWidth) / 2),
-            y: workArea.y + Math.floor((workArea.height - targetHeight) / 2),
-            width: targetWidth,
-            height: targetHeight,
-        }, workArea);
+        this._debugLog(`action: ${definition.id} preset size: configured=${centerSize.width}x${centerSize.height}, target=${targetWidth}x${targetHeight}`);
+        return this._clampGeometryToWorkArea({ x: workArea.x + Math.floor((workArea.width - targetWidth) / 2), y: workArea.y + Math.floor((workArea.height - targetHeight) / 2), width: targetWidth, height: targetHeight }, workArea);
     }
 
     _clampGeometryToWorkArea(geometry, workArea) {
         const maxX = workArea.x + workArea.width;
         const maxY = workArea.y + workArea.height;
-
         const x = Math.max(workArea.x, Math.min(geometry.x, maxX - 1));
         const y = Math.max(workArea.y, Math.min(geometry.y, maxY - 1));
         const width = Math.max(1, Math.min(geometry.width, maxX - x));
         const height = Math.max(1, Math.min(geometry.height, maxY - y));
-
         return { x, y, width, height };
     }
 
     _isUsableGeometry(geometry) {
-        return Number.isFinite(geometry.x) &&
-            Number.isFinite(geometry.y) &&
-            Number.isFinite(geometry.width) &&
-            Number.isFinite(geometry.height) &&
-            geometry.width > 0 &&
-            geometry.height > 0;
+        return Number.isFinite(geometry.x) && Number.isFinite(geometry.y) && Number.isFinite(geometry.width) && Number.isFinite(geometry.height) && geometry.width > 0 && geometry.height > 0;
     }
 
     _readCenterSize() {
         try {
             const width = this._settings?.get_int('center-width') ?? DEFAULT_CENTER_WIDTH;
             const height = this._settings?.get_int('center-height') ?? DEFAULT_CENTER_HEIGHT;
-
-            return {
-                width: Math.max(MIN_CENTER_SIZE, width),
-                height: Math.max(MIN_CENTER_SIZE, height),
-            };
+            return { width: Math.max(MIN_CENTER_SIZE, width), height: Math.max(MIN_CENTER_SIZE, height) };
         } catch (error) {
             console.error(`${LOG_PREFIX} failed to read center size settings: ${this._formatError(error)}`);
-            return {
-                width: DEFAULT_CENTER_WIDTH,
-                height: DEFAULT_CENTER_HEIGHT,
-            };
+            return { width: DEFAULT_CENTER_WIDTH, height: DEFAULT_CENTER_HEIGHT };
         }
     }
 
@@ -1283,7 +1159,6 @@ export default class UbuntuWaylandSizerExtension extends Extension {
 
     _debugLog(message) {
         this._debugLogging = this._readDebugLogging();
-
         if (this._debugLogging)
             console.log(`${LOG_PREFIX} ${message}`);
     }
@@ -1291,7 +1166,6 @@ export default class UbuntuWaylandSizerExtension extends Extension {
     _formatError(error) {
         if (!error)
             return 'unknown error';
-
         const message = error.message ? `${error.message}\n` : '';
         const stack = error.stack ?? String(error);
         return `${message}${stack}`;
