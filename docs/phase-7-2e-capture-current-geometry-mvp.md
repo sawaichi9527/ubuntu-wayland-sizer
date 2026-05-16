@@ -325,6 +325,72 @@ without crashing GNOME Shell.
 
 ---
 
+# Validation Results
+
+## Capture/save validation — PASS
+
+Applications manually validated:
+
+- Ubuntu Text Editor
+- UpNote
+
+Monitor coverage:
+
+- primary landscape monitor
+- secondary portrait monitor
+
+Saved preset examples observed in logs:
+
+```text
+texteditor   -> geometry=386,224 1080x720
+texteditor2  -> geometry=140,660 800x600
+upnote1      -> geometry=206,200 1440x768
+upnote2      -> geometry=73,170 1440x768
+```
+
+Confirmed behavior:
+
+- popup can open the save dialog
+- user-provided names are accepted
+- current focused-window geometry is captured
+- captured geometry is stored as workarea-relative geometry
+- multiple presets can be saved
+- capture works on both monitors
+- capture works across different apps
+- existing built-in preset and cycle behavior continues to work after saving
+
+Current status:
+
+```text
+Phase 7.2e schema storage: PASS
+Phase 7.2e runtime capture implementation: PASS
+Phase 7.2e text editor dual-monitor capture: PASS
+Phase 7.2e UpNote dual-monitor capture: PASS
+Phase 7.2e saved preset apply: PENDING
+Phase 7.2e persistence after reload/login: PENDING
+```
+
+## Non-blocking observations
+
+Some runs showed St/Clutter input focus warnings when opening the save dialog:
+
+```text
+clutter_input_focus_set_cursor_location: assertion 'clutter_input_focus_is_focused (focus)' failed
+clutter_input_focus_set_surrounding: assertion 'clutter_input_focus_is_focused (focus)' failed
+```
+
+These warnings did not block entering a name or saving the preset. Track as non-blocking UI/input-focus noise for now.
+
+Some UpNote resize operations also showed:
+
+```text
+Error in size change accounting.
+```
+
+This did not block the saved preset flow or built-in resize flow. Track as non-blocking Mutter/app resize accounting noise unless it becomes reproducible as a visible behavior issue.
+
+---
+
 # Acceptance Criteria
 
 Phase 7.2e MVP is complete when:
