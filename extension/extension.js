@@ -1503,7 +1503,7 @@ export default class UbuntuWaylandSizerExtension extends Extension {
     }
 
     _criticalLog(message) {
-        this._log(LOG_LEVELS.CRITICAL);
+        this._log(LOG_LEVELS.CRITICAL, message);
     }
 
     _debugLog(message) {
