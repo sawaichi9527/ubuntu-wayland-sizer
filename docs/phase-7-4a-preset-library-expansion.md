@@ -45,7 +45,7 @@ Window Positions
 Current center-cycle order:
 
 ```text
-Compact Center -> Center -> Large Center
+Compact Center -> Center -> Large Center -> Compact Center
 ```
 
 Current popup baseline:
@@ -137,7 +137,7 @@ Large Center      -- 1440x768
 Ultra-wide Center -- 1600x900
 ```
 
-Popup labels should use this style:
+Popup labels should use the current popup separator style between name and size:
 
 ```text
 Tiny Center -- 640x480
@@ -147,6 +147,8 @@ Center -- 1200x854
 Large Center -- 1440x768
 Ultra-wide Center -- 1600x900
 ```
+
+In the examples above, `--` represents the same long separator style currently used by the popup labels, not a shell option or command syntax.
 
 Exact dimensions may later be tuned based on portrait-monitor usability and mixed-scaling validation.
 
@@ -172,7 +174,21 @@ Center-cycle should remain a curated sequence across center-position presets.
 Recommended first 7.4a cycle order:
 
 ```text
-Tiny Center -> Compact Center -> Medium Center -> Center -> Large Center -> Ultra-wide Center
+Tiny Center -> Compact Center -> Medium Center -> Center -> Large Center -> Ultra-wide Center -> Tiny Center
+```
+
+Reverse direction must also wrap:
+
+```text
+Tiny Center -> Ultra-wide Center -> Large Center -> Center -> Medium Center -> Compact Center -> Tiny Center
+```
+
+Required behavior:
+
+```text
+- Cycling next from Ultra-wide Center wraps to Tiny Center.
+- Cycling previous from Tiny Center wraps to Ultra-wide Center.
+- The cycle is circular, not end-stopped.
 ```
 
 Reason:
@@ -282,6 +298,7 @@ Phase 7.4a passes when:
 ```text
 - Center Presets show name and size in popup labels
 - center-cycle moves only through Center Presets
+- center-cycle wraps in both directions
 - popup remains readable with larger preset count
 - built-in preset organization remains understandable
 - portrait-monitor behavior remains sane
@@ -325,7 +342,7 @@ Recommended implementation order:
 1. Rename visible configurable center label from Custom Center to Center
 2. Add Tiny, Medium, and Ultra-wide Center definitions
 3. Expand Center Presets popup group
-4. Expand center-cycle to all Center Presets
+4. Expand center-cycle to all Center Presets with circular wraparound
 5. Validate popup readability and cycling behavior
 ```
 
