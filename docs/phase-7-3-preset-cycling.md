@@ -162,6 +162,62 @@ custom preset applied       -> forget index
 
 ---
 
+## Phase 7.3b-A Popup Focused-Window Status Polish
+
+Phase 7.3b-A intentionally stays small. It improves popup readability without adding hidden state, recent-memory logic, restore behavior, active-button styling, or a full OSD system.
+
+Included:
+
+```text
+1. Center and bold the popup title: Ubuntu Wayland Sizer
+2. Add a Current preset line inside the existing Focused Window section
+3. Display the Current preset line in blue bold text so it is easy to notice
+```
+
+Expected Focused Window section:
+
+```text
+Focused Window
+Current preset: Custom / Manual size
+Display 1 · 1140x757 · frame 423,238
+Workarea 67,32 1853x1168 · relative 356,206
+```
+
+The Current preset value is computed only from the focused window geometry at popup-open time. It must not write persistent state.
+
+Matching order:
+
+```text
+Left half
+Right half
+Full workarea
+Compact center
+Custom center
+Large center
+Custom / Manual size
+```
+
+Suggested visual style:
+
+```css
+color: #3584e4;
+font-weight: bold;
+```
+
+Out of scope for Phase 7.3b-A:
+
+```text
+Cycle overlay hint
+Full OSD feedback
+Recent preset memory
+Last non-center restore
+Active button highlighting
+Animation
+User-configurable popup styling
+```
+
+---
+
 ## Validation Matrix
 
 Minimum apps:
@@ -195,6 +251,8 @@ Direct H/L/F then cycle next/previous
 Popup selection then cycle next/previous
 Saved preset apply then center cycle
 Full workarea then center cycle
+Open popup after left/right/full/center presets and confirm Current preset label
+Open popup after manual/custom geometry and confirm Custom / Manual size label
 ```
 
 ---
@@ -209,6 +267,8 @@ Full workarea then center cycle
 - Cycling must tolerate Electron minimum-size constraints.
 - Cycling must not change saved preset data.
 - Cycling must not break popup save/delete return behavior from Phase 7.2f.
+- Popup status display must not write persistent state.
+- Popup title/status polish must not change preset apply behavior.
 
 ---
 
@@ -228,6 +288,10 @@ Phase 7.3 passes when:
 - Cycling works after breaking out from full-workarea state.
 - Portrait monitor clamping remains sane.
 - Electron constrained apps remain edge/center corrected as much as Mutter allows.
+- Popup title is centered and bold.
+- Focused Window section shows a blue bold Current preset line.
+- Current preset is correct for left, right, full, compact center, custom center, and large center.
+- Current preset falls back to Custom / Manual size for unmatched geometry.
 - No new blocking GNOME Shell warnings appear.
 
 ---
@@ -261,4 +325,5 @@ Expected status:
 Phase 7.2f popup/custom-preset usability: PASS
 Phase 7.3 preset cycling validation: IN PROGRESS
 Phase 7.3a cycle-state implementation fix: REQUIRED
+Phase 7.3b-A popup focused-window status polish: READY
 ```
