@@ -504,3 +504,17 @@ Phase 7.3b-A popup focused-window status polish: READY
 Phase 7.3b-B built-in preset apply feedback overlay: READY
 Phase 7.3c-4 logging level audit: READY
 ```
+
+---
+
+## Phase 7.3c Backend Validation Result
+
+Result: PASS
+
+Observed after deploy, schema compile, and logout/login:
+
+```text
+[ubuntu-wayland-sizer][NORMAL] enable: start
+[ubuntu-wayland-sizer][DEBUG] enable: settings loaded from metadata settings-schema; debug-logging=true
+[ubuntu-wayland-sizer][DEBUG] enable: keybinding registered: resize-left -> left
+[ubuntu-wayland-sizer][NORMAL] enabled

@@ -10,6 +10,12 @@ import * as Main from 'resource:///org/gnome/shell/ui/main.js';
 import * as ModalDialog from 'resource:///org/gnome/shell/ui/modalDialog.js';
 
 const LOG_PREFIX = '[ubuntu-wayland-sizer]';
+const LOG_LEVELS = Object.freeze({
+    NORMAL: 'NORMAL',
+    DEBUG: 'DEBUG',
+    WARNING: 'WARNING',
+    CRITICAL: 'CRITICAL',
+});
 const POST_UNMAXIMIZE_RESIZE_DELAY_MS = 180;
 const POST_RESIZE_CORRECTION_DELAY_MS = 90;
 const FULL_WORKAREA_TOLERANCE_PX = 2;
@@ -327,7 +333,7 @@ class PresetPopupDialog extends ModalDialog.ModalDialog {
 
 export default class UbuntuWaylandSizerExtension extends Extension {
     enable() {
-        console.log(`${LOG_PREFIX} enable: start`);
+        this._normalLog('enable: start');
 
         try {
             this._settings = this.getSettings();
@@ -363,18 +369,18 @@ export default class UbuntuWaylandSizerExtension extends Extension {
                 this._debugLog(`enable: keybinding registered: ${keybindingName} -> preset-popup`);
             }
 
-            console.log(`${LOG_PREFIX} enabled`);
+            this._normalLog('enabled');
         } catch (error) {
-            console.error(`${LOG_PREFIX} enable failed: ${this._formatError(error)}`);
+            this._criticalLog(`enable failed: ${this._formatError(error)}`);
             this._cleanup();
             throw error;
         }
     }
 
     disable() {
-        console.log(`${LOG_PREFIX} disable: start`);
+        this._normalLog('disable: start');
         this._cleanup();
-        console.log(`${LOG_PREFIX} disabled`);
+        this._normalLog('disabled');
     }
 
     _cleanup() {
@@ -388,7 +394,7 @@ export default class UbuntuWaylandSizerExtension extends Extension {
                 try {
                     GLib.source_remove(sourceId);
                 } catch (error) {
-                    console.error(`${LOG_PREFIX} cleanup: failed to remove pending timeout ${sourceId}: ${this._formatError(error)}`);
+                    this._warningLog(`cleanup: failed to remove pending timeout ${sourceId}: ${this._formatError(error)}`);
                 }
             }
         }
@@ -399,7 +405,7 @@ export default class UbuntuWaylandSizerExtension extends Extension {
                     Main.wm.removeKeybinding(keybindingName);
                     this._debugLog(`cleanup: keybinding removed: ${keybindingName}`);
                 } catch (error) {
-                    console.error(`${LOG_PREFIX} cleanup: failed to remove keybinding ${keybindingName}: ${this._formatError(error)}`);
+                    this._warningLog(`cleanup: failed to remove keybinding ${keybindingName}: ${this._formatError(error)}`);
                 }
             }
         }
@@ -447,7 +453,7 @@ export default class UbuntuWaylandSizerExtension extends Extension {
             this._presetPopupDialog = new PresetPopupDialog(this, window, context);
             this._presetPopupDialog.open();
         } catch (error) {
-            console.error(`${LOG_PREFIX} popup: failed to open preset popup: ${this._formatError(error)}`);
+            this._criticalLog(`popup: failed to open preset popup: ${this._formatError(error)}`);
             this._presetPopupDialog = null;
         }
     }
@@ -490,7 +496,7 @@ export default class UbuntuWaylandSizerExtension extends Extension {
             this._savePresetDialog = new SavePresetDialog(this, suggestedName);
             this._savePresetDialog.open();
         } catch (error) {
-            console.error(`${LOG_PREFIX} custom-preset: failed to open save dialog: ${this._formatError(error)}`);
+            this._criticalLog(`custom-preset: failed to open save dialog: ${this._formatError(error)}`);
             this._savePresetDialog = null;
         }
     }
@@ -526,7 +532,7 @@ export default class UbuntuWaylandSizerExtension extends Extension {
             this._deletePresetDialog = new DeletePresetDialog(this, validPreset);
             this._deletePresetDialog.open();
         } catch (error) {
-            console.error(`${LOG_PREFIX} custom-preset: failed to open delete dialog: ${this._formatError(error)}`);
+            this._criticalLog(`custom-preset: failed to open delete dialog: ${this._formatError(error)}`);
             this._deletePresetDialog = null;
         }
     }
@@ -601,7 +607,7 @@ export default class UbuntuWaylandSizerExtension extends Extension {
         try {
             rawJson = this._settings?.get_string(CUSTOM_PRESETS_KEY) ?? '';
         } catch (error) {
-            console.error(`${LOG_PREFIX} custom-preset: failed to read ${CUSTOM_PRESETS_KEY}: ${this._formatError(error)}`);
+            this._criticalLog(`custom-preset: failed to read ${CUSTOM_PRESETS_KEY}: ${this._formatError(error)}`);
             return [];
         }
 
@@ -612,7 +618,7 @@ export default class UbuntuWaylandSizerExtension extends Extension {
 
             return parsed.presets.map(preset => this._validateCustomPreset(preset)).filter(preset => preset !== null);
         } catch (error) {
-            console.error(`${LOG_PREFIX} custom-preset: failed to parse ${CUSTOM_PRESETS_KEY}: ${this._formatError(error)}`);
+            this._criticalLog(`custom-preset: failed to parse ${CUSTOM_PRESETS_KEY}: ${this._formatError(error)}`);
             return [];
         }
     }
@@ -621,7 +627,7 @@ export default class UbuntuWaylandSizerExtension extends Extension {
         try {
             this._settings?.set_string(CUSTOM_PRESETS_KEY, JSON.stringify({ version: CUSTOM_PRESETS_VERSION, presets }));
         } catch (error) {
-            console.error(`${LOG_PREFIX} custom-preset: failed to write ${CUSTOM_PRESETS_KEY}: ${this._formatError(error)}`);
+            this._criticalLog(`custom-preset: failed to write ${CUSTOM_PRESETS_KEY}: ${this._formatError(error)}`);
         }
     }
 
@@ -758,7 +764,7 @@ export default class UbuntuWaylandSizerExtension extends Extension {
             window.move_frame(true, safeRect.x, safeRect.y);
             window.move_resize_frame(true, safeRect.x, safeRect.y, safeRect.width, safeRect.height);
         } catch (error) {
-            console.error(`${LOG_PREFIX} custom-preset: safe restore failed before preset ${preset.name}: ${this._formatError(error)}`);
+            this._warningLog(`custom-preset: safe restore failed before preset ${preset.name}: ${this._formatError(error)}`);
         }
 
         this._scheduleTimeout(POST_UNMAXIMIZE_RESIZE_DELAY_MS, () => {
@@ -773,7 +779,7 @@ export default class UbuntuWaylandSizerExtension extends Extension {
         this._debugLog(`custom-preset: geometry context (${reason}): currentMonitor=${currentContext.monitorIndex}, targetMonitor=${targetContext.monitorIndex}, originAvailable=${targetContext.originAvailable}, targetWorkarea=${targetContext.workArea.x},${targetContext.workArea.y} ${targetContext.workArea.width}x${targetContext.workArea.height}, frame=${currentContext.frameRect.x},${currentContext.frameRect.y} ${currentContext.frameRect.width}x${currentContext.frameRect.height}`);
 
         if (!this._isUsableGeometry(target)) {
-            console.error(`${LOG_PREFIX} custom-preset: invalid target geometry for ${preset.name}: ${target.x},${target.y} ${target.width}x${target.height}`);
+            this._warningLog(`custom-preset: invalid target geometry for ${preset.name}: ${target.x},${target.y} ${target.width}x${target.height}`);
             return;
         }
 
@@ -783,7 +789,7 @@ export default class UbuntuWaylandSizerExtension extends Extension {
             window.move_resize_frame(true, target.x, target.y, target.width, target.height);
             this._debugLog(`custom-preset: applied preset ${preset.name}: ${target.x},${target.y} ${target.width}x${target.height}`);
         } catch (error) {
-            console.error(`${LOG_PREFIX} custom-preset: move_resize_frame failed for ${preset.name}: ${this._formatError(error)}`);
+            this._criticalLog(`custom-preset: move_resize_frame failed for ${preset.name}: ${this._formatError(error)}`);
         }
     }
 
@@ -1009,7 +1015,7 @@ export default class UbuntuWaylandSizerExtension extends Extension {
                 }
             }
         } catch (error) {
-            console.error(`${LOG_PREFIX} action: failed to infer center cycle index: ${this._formatError(error)}`);
+            this._warningLog(`action: failed to infer center cycle index: ${this._formatError(error)}`);
         }
 
         return UNKNOWN_CYCLE_INDEX;
@@ -1061,7 +1067,7 @@ export default class UbuntuWaylandSizerExtension extends Extension {
             window.move_resize_frame(true, safeRect.x, safeRect.y, safeRect.width, safeRect.height);
             this._debugLog(`action: applied safe restore before preset ${presetName}: ${safeRect.x},${safeRect.y} ${safeRect.width}x${safeRect.height}`);
         } catch (error) {
-            console.error(`${LOG_PREFIX} action: safe restore failed before preset ${presetName}: ${this._formatError(error)}`);
+            this._warningLog(`action: safe restore failed before preset ${presetName}: ${this._formatError(error)}`);
         }
 
         this._scheduleTimeout(POST_UNMAXIMIZE_RESIZE_DELAY_MS, () => {
@@ -1080,7 +1086,7 @@ export default class UbuntuWaylandSizerExtension extends Extension {
         }
 
         if (!this._isUsableGeometry(target)) {
-            console.error(`${LOG_PREFIX} action: invalid target geometry for ${presetName}: ${target.x},${target.y} ${target.width}x${target.height}`);
+            this._warningLog(`action: invalid target geometry for ${presetName}: ${target.x},${target.y} ${target.width}x${target.height}`);
             return;
         }
 
@@ -1093,7 +1099,7 @@ export default class UbuntuWaylandSizerExtension extends Extension {
             this._showPresetFeedbackOverlay(presetName, target, context.workArea);
             this._schedulePostResizeCorrection(window, presetName, context.workArea, target);
         } catch (error) {
-            console.error(`${LOG_PREFIX} action: move_resize_frame failed for ${presetName}: ${this._formatError(error)}`);
+            this._criticalLog(`action: move_resize_frame failed for ${presetName}: ${this._formatError(error)}`);
         }
     }
 
@@ -1148,7 +1154,7 @@ export default class UbuntuWaylandSizerExtension extends Extension {
             this._presetFeedbackOverlay = overlay;
             return overlay;
         } catch (error) {
-            console.error(`${LOG_PREFIX} feedback: failed to create preset overlay: ${this._formatError(error)}`);
+            this._warningLog(`feedback: failed to create preset overlay: ${this._formatError(error)}`);
             this._presetFeedbackOverlay = null;
             this._presetFeedbackTitleLabel = null;
             this._presetFeedbackSizeLabel = null;
@@ -1266,7 +1272,7 @@ export default class UbuntuWaylandSizerExtension extends Extension {
             window.move_resize_frame(true, correctedTarget.x, correctedTarget.y, correctedTarget.width, correctedTarget.height);
             this._debugLog(`action: post-corrected preset ${presetName}: actual=${actualFrame.x},${actualFrame.y} ${actualFrame.width}x${actualFrame.height}, corrected=${correctedTarget.x},${correctedTarget.y} ${correctedTarget.width}x${correctedTarget.height}`);
         } catch (error) {
-            console.error(`${LOG_PREFIX} action: post-correction failed for ${presetName}: ${this._formatError(error)}`);
+            this._warningLog(`action: post-correction failed for ${presetName}: ${this._formatError(error)}`);
         }
     }
 
@@ -1362,7 +1368,7 @@ export default class UbuntuWaylandSizerExtension extends Extension {
                 return true;
             return Boolean(window.maximizedHorizontally && window.maximizedVertically);
         } catch (error) {
-            console.error(`${LOG_PREFIX} action: failed to check maximized state: ${this._formatError(error)}`);
+            this._warningLog(`action: failed to check maximized state: ${this._formatError(error)}`);
             return false;
         }
     }
@@ -1372,7 +1378,7 @@ export default class UbuntuWaylandSizerExtension extends Extension {
             if (window.unmake_fullscreen)
                 window.unmake_fullscreen();
         } catch (error) {
-            console.error(`${LOG_PREFIX} action: unmake_fullscreen skipped/failed: ${this._formatError(error)}`);
+            this._warningLog(`action: unmake_fullscreen skipped/failed: ${this._formatError(error)}`);
         }
     }
 
@@ -1387,7 +1393,7 @@ export default class UbuntuWaylandSizerExtension extends Extension {
             else
                 window.unmaximize(Meta.MaximizeFlags.BOTH);
         } catch (error) {
-            console.error(`${LOG_PREFIX} action: unmaximize skipped/failed: ${this._formatError(error)}`);
+            this._warningLog(`action: unmaximize skipped/failed: ${this._formatError(error)}`);
         }
     }
 
@@ -1396,7 +1402,7 @@ export default class UbuntuWaylandSizerExtension extends Extension {
             if (window.move_to_monitor)
                 window.move_to_monitor(monitorIndex);
         } catch (error) {
-            console.error(`${LOG_PREFIX} action: move_to_monitor skipped/failed: ${this._formatError(error)}`);
+            this._warningLog(`action: move_to_monitor skipped/failed: ${this._formatError(error)}`);
         }
     }
 
@@ -1406,7 +1412,7 @@ export default class UbuntuWaylandSizerExtension extends Extension {
             const height = this._settings?.get_int('center-height') ?? DEFAULT_CENTER_HEIGHT;
             return { width: Math.max(MIN_CENTER_SIZE, width), height: Math.max(MIN_CENTER_SIZE, height) };
         } catch (error) {
-            console.error(`${LOG_PREFIX} failed to read center size settings: ${this._formatError(error)}`);
+            this._criticalLog(`failed to read center size settings: ${this._formatError(error)}`);
             return { width: DEFAULT_CENTER_WIDTH, height: DEFAULT_CENTER_HEIGHT };
         }
     }
@@ -1415,15 +1421,36 @@ export default class UbuntuWaylandSizerExtension extends Extension {
         try {
             return this._settings?.get_boolean('debug-logging') ?? true;
         } catch (error) {
-            console.error(`${LOG_PREFIX} failed to read debug-logging setting: ${this._formatError(error)}`);
+            this._criticalLog(`failed to read debug-logging setting: ${this._formatError(error)}`);
             return true;
         }
+    }
+
+    _log(level, message) {
+        const formatted = `${LOG_PREFIX}[${level}] ${message}`;
+
+        if (level === LOG_LEVELS.CRITICAL)
+            console.error(formatted);
+        else
+            console.log(formatted);
+    }
+
+    _normalLog(message) {
+        this._log(LOG_LEVELS.NORMAL, message);
+    }
+
+    _warningLog(message) {
+        this._log(LOG_LEVELS.WARNING, message);
+    }
+
+    _criticalLog(message) {
+        this._log(LOG_LEVELS.CRITICAL, message);
     }
 
     _debugLog(message) {
         this._debugLogging = this._readDebugLogging();
         if (this._debugLogging)
-            console.log(`${LOG_PREFIX} ${message}`);
+            this._log(LOG_LEVELS.DEBUG, message);
     }
 
     _formatError(error) {
