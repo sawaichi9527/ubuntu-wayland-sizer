@@ -100,6 +100,62 @@ The existing schema keys may remain for compatibility, but they should not defin
 
 ---
 
+## Library Flexibility Guardrail
+
+The Phase 7.4a standard size table should be treated as stable for the future v1.0 release, but the implementation must not hard-code behavior to exactly these six entries.
+
+The design must allow future maintainers to:
+
+```text
+- insert a new Center Preset
+- change an existing Center Preset size
+- remove an existing Center Preset
+- reorder Center Presets
+```
+
+without rewriting cycle logic.
+
+Required implementation direction:
+
+```text
+Center preset metadata owns:
+- id
+- label
+- width
+- height
+- popup ordering
+- cycle ordering
+```
+
+Popup generation and center cycling should consume that metadata/list instead of using fixed numeric indexes or one-off conditionals.
+
+Preferred behavior:
+
+```text
+CENTER_PRESET_LIBRARY
+  -> POPUP Center Presets group
+  -> CENTER_CYCLE_PRESETS order
+  -> preset geometry calculation
+```
+
+Avoid:
+
+```text
+- if index === 5 then wrap to 0
+- switch statements that assume only six center presets
+- duplicated popup list and cycle list that can drift apart
+```
+
+Cycle wraparound should remain based on the current library length:
+
+```text
+nextIndex = wrap(currentIndex + direction, CENTER_CYCLE_PRESETS.length)
+```
+
+This keeps v1.0 stable while preserving future flexibility.
+
+---
+
 ## Phase 7.4a Scope
 
 Included:
@@ -300,6 +356,7 @@ Phase 7.4a passes when:
 ```text
 - Center Presets show name and size in popup labels
 - Center Presets use standardized library dimensions
+- Center Presets are metadata-driven enough for future insert/change/remove operations
 - center-cycle moves only through Center Presets
 - center-cycle wraps in both directions
 - popup remains readable with larger preset count
