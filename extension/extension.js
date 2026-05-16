@@ -449,7 +449,7 @@ export default class UbuntuWaylandSizerExtension extends Extension {
             return '';
 
         const versionText = String(version).trim();
-        return versionText ? `v${versionText}` : '';
+        return versionText ? `v${versionText}.0` : '';
     }
 
     _getPopupTitle() {
