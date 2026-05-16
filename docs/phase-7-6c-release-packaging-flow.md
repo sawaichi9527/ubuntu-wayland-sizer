@@ -73,7 +73,7 @@ Installed user-local path:
 Suggested release artifact naming:
 
 ```text
-ubuntu-wayland-sizer-v1.0-gnome50.zip
+ubuntu-wayland-sizer-v1.0-rc1-gnome50.zip
 ```
 
 Naming pattern:
@@ -93,7 +93,7 @@ GNOME Shell target: 50
 Therefore current package name should be:
 
 ```text
-ubuntu-wayland-sizer-v1.0-gnome50.zip
+ubuntu-wayland-sizer-v1.0-rc1-gnome50.zip
 ```
 
 ## Manual Packaging Flow
@@ -119,14 +119,14 @@ Create ZIP:
 
 ```bash
 cd build/release
-zip -r ../ubuntu-wayland-sizer-v1.0-gnome50.zip ubuntu-wayland-sizer@sawaichi9527
+zip -r ../ubuntu-wayland-sizer-v1.0-rc1-gnome50.zip ubuntu-wayland-sizer@sawaichi9527
 cd ../..
 ```
 
 Expected output:
 
 ```text
-build/ubuntu-wayland-sizer-v1.0-gnome50.zip
+build/ubuntu-wayland-sizer-v1.0-rc1-gnome50.zip
 ```
 
 ## Package Inspection
@@ -134,7 +134,7 @@ build/ubuntu-wayland-sizer-v1.0-gnome50.zip
 Inspect ZIP contents:
 
 ```bash
-unzip -l build/ubuntu-wayland-sizer-v1.0-gnome50.zip
+unzip -l build/ubuntu-wayland-sizer-v1.0-rc1-gnome50.zip
 ```
 
 Expected top-level contents:
@@ -156,7 +156,7 @@ gnome-extensions disable ubuntu-wayland-sizer@sawaichi9527 || true
 rm -rf ~/.local/share/gnome-shell/extensions/ubuntu-wayland-sizer@sawaichi9527
 
 mkdir -p ~/.local/share/gnome-shell/extensions
-unzip build/ubuntu-wayland-sizer-v1.0-gnome50.zip -d ~/.local/share/gnome-shell/extensions
+unzip build/ubuntu-wayland-sizer-v1.0-rc1-gnome50.zip -d ~/.local/share/gnome-shell/extensions
 ```
 
 Then log out and log back in.

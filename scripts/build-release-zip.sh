@@ -49,13 +49,29 @@ PY
 )"
 
 DISPLAY_VERSION="v${METADATA_VERSION}.0"
-ZIP_NAME="ubuntu-wayland-sizer-${DISPLAY_VERSION}-gnome${SHELL_VERSION}.zip"
+RELEASE_SUFFIX="${1:-}"
+
+if [[ -n "${RELEASE_SUFFIX}" ]]; then
+  if [[ ! "${RELEASE_SUFFIX}" =~ ^[A-Za-z0-9][A-Za-z0-9._-]*$ ]]; then
+    echo "ERROR: invalid release suffix: ${RELEASE_SUFFIX}"
+    echo "Allowed characters: letters, numbers, dot, underscore, hyphen"
+    exit 1
+  fi
+
+  RELEASE_VERSION="${DISPLAY_VERSION}-${RELEASE_SUFFIX}"
+else
+  RELEASE_VERSION="${DISPLAY_VERSION}"
+fi
+
+ZIP_NAME="ubuntu-wayland-sizer-${RELEASE_VERSION}-gnome${SHELL_VERSION}.zip"
 ZIP_PATH="${BUILD_DIR}/${ZIP_NAME}"
 
 echo "Building Ubuntu Wayland Sizer release package"
 echo "Extension UUID: ${EXTENSION_UUID}"
 echo "Metadata version: ${METADATA_VERSION}"
 echo "Display version: ${DISPLAY_VERSION}"
+echo "Release suffix: ${RELEASE_SUFFIX:-none}"
+echo "Release version: ${RELEASE_VERSION}"
 echo "GNOME Shell version: ${SHELL_VERSION}"
 echo "Output: ${ZIP_PATH}"
 
