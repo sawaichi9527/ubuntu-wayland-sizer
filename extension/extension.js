@@ -150,6 +150,35 @@ class SavePresetDialog extends ModalDialog.ModalDialog {
     }
 });
 
+const DeletePresetDialog = GObject.registerClass(
+class DeletePresetDialog extends ModalDialog.ModalDialog {
+    _init(extension, preset) {
+        super._init({ styleClass: 'ubuntu-wayland-sizer-delete-dialog' });
+
+        this._extension = extension;
+        this._preset = preset;
+        this._buildLayout();
+        this.setButtons([
+            { label: 'Cancel', action: () => this.close() },
+            { label: 'Delete', action: () => this._delete(), default: true },
+        ]);
+    }
+
+    _buildLayout() {
+        const content = new St.BoxLayout({ vertical: true, style: 'spacing: 12px; min-width: 460px;' });
+        content.add_child(new St.Label({ text: 'Delete Saved Preset', style: 'font-size: 18px; font-weight: bold;' }));
+        content.add_child(new St.Label({ text: 'Delete this saved preset?' }));
+        content.add_child(new St.Label({ text: this._extension._formatCustomPresetButtonLabel(this._preset), style: 'font-weight: bold;' }));
+        content.add_child(new St.Label({ text: 'This cannot be undone.', style: 'color: #ffb86c;' }));
+        this.contentLayout.add_child(content);
+    }
+
+    _delete() {
+        this.close();
+        this._extension._deleteCustomPresetById(this._preset.id);
+    }
+});
+
 const PresetPopupDialog = GObject.registerClass(
 class PresetPopupDialog extends ModalDialog.ModalDialog {
     _init(extension, window, context) {
@@ -162,7 +191,7 @@ class PresetPopupDialog extends ModalDialog.ModalDialog {
     }
 
     _buildLayout() {
-        const content = new St.BoxLayout({ vertical: true, style: 'spacing: 12px; min-width: 620px;' });
+        const content = new St.BoxLayout({ vertical: true, style: 'spacing: 12px; min-width: 700px;' });
         content.add_child(new St.Label({ text: 'Ubuntu Wayland Sizer', style: 'font-size: 20px; font-weight: bold;' }));
         content.add_child(this._buildGeometrySection());
         content.add_child(this._buildCurrentDisplaysSection());
@@ -224,12 +253,23 @@ class PresetPopupDialog extends ModalDialog.ModalDialog {
         box.add_child(new St.Label({ text: 'Saved Presets', style: 'font-weight: bold; padding-top: 6px;' }));
 
         for (const preset of customPresets) {
-            const button = new St.Button({ label: this._extension._formatCustomPresetButtonLabel(preset), can_focus: true, style: 'padding: 8px 12px; border-radius: 6px; background-color: rgba(255,255,255,0.10); text-align: left;' });
-            button.connect('clicked', () => {
+            const row = new St.BoxLayout({ vertical: false, style: 'spacing: 8px;' });
+            const applyButton = new St.Button({ label: this._extension._formatCustomPresetButtonLabel(preset), can_focus: true, x_expand: true, style: 'padding: 8px 12px; border-radius: 6px; background-color: rgba(255,255,255,0.10); text-align: left;' });
+            const deleteButton = new St.Button({ label: 'Delete', can_focus: true, style: 'padding: 8px 12px; border-radius: 6px; background-color: rgba(255,120,120,0.16);' });
+
+            applyButton.connect('clicked', () => {
                 this.close();
                 this._extension._applyCustomPresetToFocusedWindow(preset);
             });
-            box.add_child(button);
+
+            deleteButton.connect('clicked', () => {
+                this.close();
+                this._extension._openDeletePresetDialog(preset);
+            });
+
+            row.add_child(applyButton);
+            row.add_child(deleteButton);
+            box.add_child(row);
         }
 
         return box;
@@ -280,6 +320,7 @@ export default class UbuntuWaylandSizerExtension extends Extension {
             this._centerCycleIndex = UNKNOWN_CYCLE_INDEX;
             this._presetPopupDialog = null;
             this._savePresetDialog = null;
+            this._deletePresetDialog = null;
             this._debugLogging = this._readDebugLogging();
             this._debugLog(`enable: settings loaded from metadata settings-schema; debug-logging=${this._debugLogging}`);
 
@@ -318,6 +359,7 @@ export default class UbuntuWaylandSizerExtension extends Extension {
     _cleanup() {
         this._closePresetPopupDialog('cleanup');
         this._closeSavePresetDialog('cleanup');
+        this._closeDeletePresetDialog('cleanup');
 
         if (this._pendingTimeoutIds) {
             for (const sourceId of this._pendingTimeoutIds) {
@@ -345,6 +387,7 @@ export default class UbuntuWaylandSizerExtension extends Extension {
         this._centerCycleIndex = UNKNOWN_CYCLE_INDEX;
         this._presetPopupDialog = null;
         this._savePresetDialog = null;
+        this._deletePresetDialog = null;
         this._debugLogging = true;
         this._settings = null;
     }
@@ -366,6 +409,7 @@ export default class UbuntuWaylandSizerExtension extends Extension {
         try {
             this._closePresetPopupDialog('replace');
             this._closeSavePresetDialog('replace');
+            this._closeDeletePresetDialog('replace');
             const context = this._getWindowContext(window);
             this._debugLog(`popup: context monitor=${context.monitorIndex}, workarea=${context.workArea.x},${context.workArea.y} ${context.workArea.width}x${context.workArea.height}, frame=${context.frameRect.x},${context.frameRect.y} ${context.frameRect.width}x${context.frameRect.height}`);
             this._presetPopupDialog = new PresetPopupDialog(this, window, context);
@@ -395,6 +439,7 @@ export default class UbuntuWaylandSizerExtension extends Extension {
 
         try {
             this._closeSavePresetDialog('replace');
+            this._closeDeletePresetDialog('replace');
             const suggestedName = this._buildSuggestedCustomPresetName();
             this._savePresetDialog = new SavePresetDialog(this, suggestedName);
             this._savePresetDialog.open();
@@ -416,6 +461,64 @@ export default class UbuntuWaylandSizerExtension extends Extension {
         } catch (error) {
             this._debugLog(`custom-preset: previous save dialog already closed/disposed (${reason})`);
         }
+    }
+
+    _openDeletePresetDialog(preset) {
+        const validPreset = this._validateCustomPreset(preset);
+
+        if (!validPreset) {
+            this._debugLog('custom-preset: delete dialog ignored because preset is invalid');
+            return;
+        }
+
+        this._debugLog(`custom-preset: delete dialog requested id=${validPreset.id}, name=${validPreset.name}`);
+
+        try {
+            this._closePresetPopupDialog('delete-confirm');
+            this._closeSavePresetDialog('delete-confirm');
+            this._closeDeletePresetDialog('replace');
+            this._deletePresetDialog = new DeletePresetDialog(this, validPreset);
+            this._deletePresetDialog.open();
+        } catch (error) {
+            console.error(`${LOG_PREFIX} custom-preset: failed to open delete dialog: ${this._formatError(error)}`);
+            this._deletePresetDialog = null;
+        }
+    }
+
+    _closeDeletePresetDialog(reason) {
+        const dialog = this._deletePresetDialog;
+        this._deletePresetDialog = null;
+        if (!dialog)
+            return;
+
+        try {
+            dialog.close();
+            this._debugLog(`custom-preset: closed previous delete dialog (${reason})`);
+        } catch (error) {
+            this._debugLog(`custom-preset: previous delete dialog already closed/disposed (${reason})`);
+        }
+    }
+
+    _deleteCustomPresetById(id) {
+        const targetId = String(id ?? '').trim();
+
+        if (!targetId) {
+            this._debugLog('custom-preset: delete ignored because preset id is empty');
+            return false;
+        }
+
+        const presets = this._readCustomPresets();
+        const targetPreset = presets.find(preset => preset.id === targetId);
+
+        if (!targetPreset) {
+            this._debugLog(`custom-preset: delete ignored because preset id was not found: ${targetId}`);
+            return false;
+        }
+
+        const remainingPresets = presets.filter(preset => preset.id !== targetId);
+        this._writeCustomPresets(remainingPresets);
+        this._debugLog(`custom-preset: deleted preset id=${targetPreset.id}, name=${targetPreset.name}`);
+        return true;
     }
 
     _buildSuggestedCustomPresetName() {
